@@ -239,18 +239,77 @@ const cardUIImages = {
         }
     }
 
+    // 計算圖片在 CSS object-fit 下的縮放尺寸
+    function getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit) {
+        if (objectFit === 'cover') {
+            const s = Math.max(boxW / imgNW, boxH / imgNH);
+            return { w: imgNW * s, h: imgNH * s };
+        } else if (objectFit === 'contain') {
+            const s = Math.min(boxW / imgNW, boxH / imgNH);
+            return { w: imgNW * s, h: imgNH * s };
+        } else {
+            return { w: boxW, h: boxH };
+        }
+    }
+
     async function downloadCard() {
         downloadBtn.disabled = true;
         downloadBtn.textContent = '輸出中...';
 
         try {
             const cardPreview = document.getElementById('cardPreview');
+
             const canvas = await html2canvas(cardPreview, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: true,
-                backgroundColor: null
+                backgroundColor: null,
+                onclone: (clonedDoc) => {
+                    const clonedBgImg = clonedDoc.getElementById('bgImg');
+                    const origBgImg = document.getElementById('bgImg');
+                    const origPreview = document.getElementById('cardPreview');
+
+                    if (clonedBgImg && origBgImg && origBgImg.src && origBgImg.style.display !== 'none' && origBgImg.naturalWidth > 0) {
+                        const boxW = origPreview.offsetWidth;
+                        const boxH = origPreview.offsetHeight;
+
+                        // 創建高解析度 (2倍) 離屏 Canvas 預繪製底圖
+                        const scaleFactor = 2;
+                        const bakeCanvas = document.createElement('canvas');
+                        bakeCanvas.width = boxW * scaleFactor;
+                        bakeCanvas.height = boxH * scaleFactor;
+                        const ctx = bakeCanvas.getContext('2d');
+
+                        ctx.scale(scaleFactor, scaleFactor);
+
+                        // 取得 CSS object-fit 樣式設定
+                        const computedStyle = window.getComputedStyle(origBgImg);
+                        const objectFit = computedStyle.objectFit || 'cover';
+
+                        const imgNW = origBgImg.naturalWidth;
+                        const imgNH = origBgImg.naturalHeight;
+                        const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
+
+                        // 套用與 preview 一致的 Transform 繪製
+                        ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
+                        ctx.rotate((imgState.rotation * Math.PI) / 180);
+                        ctx.scale(imgState.scale, imgState.scale);
+
+                        // 以中心點對齊繪製
+                        ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
+
+                        // 將烘焙結果賦予複製節點並清除 CSS transform，避免 html2canvas 誤判
+                        clonedBgImg.src = bakeCanvas.toDataURL('image/png');
+                        clonedBgImg.style.transform = 'none';
+                        clonedBgImg.style.top = '0';
+                        clonedBgImg.style.left = '0';
+                        clonedBgImg.style.width = '100%';
+                        clonedBgImg.style.height = '100%';
+                        clonedBgImg.style.objectFit = 'fill';
+                    }
+                }
             });
+
             const imageUrl = canvas.toDataURL('image/png');
             const cardName = cardNameInput.value.trim() || 'CustomCard';
             const fileName = `${cardName}_${Date.now()}.png`;
@@ -258,6 +317,7 @@ const cardUIImages = {
             if (typeof showExportModal === 'function') {
                 showExportModal(imageUrl, fileName);
             }
+
             const link = document.createElement('a');
             link.href = imageUrl;
             link.download = fileName;
@@ -382,7 +442,7 @@ const cardUIImages = {
         updatePreview();
     }
 
-        function updatePreview() {
+    function updatePreview() {
         const selectedColor = cardColorInput.value;
         const selectedType = cardTypeInput.value;
 
@@ -432,16 +492,13 @@ const cardUIImages = {
         prevAP.textContent = statAPInput.value || '0';
         prevDP.textContent = statDPInput.value || '0';
         
-        // 🌟 核心修改：判斷是否為事件卡 (event)
         const nameValue = cardNameInput.value || '';
         if (selectedType === 'event') {
-            // 如果是事件卡，將字元拆開用 span 包裹（解決 html2canvas 直書躺平問題）
             prevName.innerHTML = nameValue
                 .split('')
                 .map(char => `<span>${char}</span>`)
                 .join('');
         } else {
-            // 其他卡片類型維持正常的純文字橫書
             prevName.textContent = nameValue;
         }
 
@@ -475,4 +532,5 @@ const cardUIImages = {
 
         prevEffect.innerHTML = finalEffectContent;
     }
+
 init();
