@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precious Memories 卡片自製器</title>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="CSS.css">
+</head>
+<body>
+
+<div class="container">
+    <!-- 左側表單 -->
+    <div class="form-section">
+        <div class="row">
+            <div class="input-group">
+                <label for="cardColor">顏色</label>
+                <select id="cardColor">
+                    <option value="red">紅色</option>
+                    <option value="blue">藍色</option>
+                    <option value="green">綠色</option>
+                    <option value="yellow">黃色</option>
+                    <option value="purple">紫色</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="cardType">卡片種類</label>
+                <select id="cardType">
+                    <option value="character_num">角色卡 (有數字)</option>
+                    <option value="character_nonum">角色卡 (無數字)</option>
+                    <option value="event">事件卡 (Event)</option>
+                    <option value="support">裝備卡 (Support)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="cardName">卡名</label>
+            <input type="text" id="cardName" placeholder="請輸入卡片名稱">
+        </div>
+
+        <div class="row">
+            <div class="input-group">
+                <label for="statC">C (Cost)</label>
+                <input type="number" id="statC" value="0">
+            </div>
+            <div class="input-group">
+                <label for="statS">S (Source)</label>
+                <input type="number" id="statS" value="0">
+            </div>
+            <div class="input-group">
+                <label for="statAP">AP</label>
+                <input type="number" id="statAP" value="0">
+            </div>
+            <div class="input-group">
+                <label for="statDP">DP</label>
+                <input type="number" id="statDP" value="0">
+            </div>
+        </div>
+        
+        <!-- 新增快捷標籤按鈕區 -->
+        <div class="input-group">
+            <label>插入時點型效果</label>
+            <div class="tag-btn-group" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
+                <!-- 第一組 -->
+                <button type="button" class="btn tag-btn group1" data-group="1" data-text="[メイン/">[メイン/</button>
+                <button type="button" class="btn tag-btn group1" data-group="1" data-text="[アプローチ/">[アプローチ/</button>
+                <span style="border-left: 1px solid #ccc; margin: 0 4px;"></span>
+                <!-- 第二組 -->
+                <button type="button" class="btn tag-btn group2" data-group="2" data-text="自分]:">自分]:</button>
+                <button type="button" class="btn tag-btn group2" data-group="2" data-text="相手]:">相手]:</button>
+                <button type="button" class="btn tag-btn group2" data-group="2" data-text="割り込み]:">割り込み]:</button>
+                <!-- 第三組 -->
+                <button type="button" class="btn tag-btn" data-group="3" data-text="《使用条件》:">《使用条件》:</button>
+                <button type="button" class="btn tag-btn" data-group="3" data-text="(逆境):「」">(逆境):「」</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="cardEffect">效果文</label>
+            <textarea id="cardEffect" placeholder="請輸入卡片效果說明..."></textarea>
+        </div>
+
+        <div class="keyword-box">
+            <div class="keyword-title">關鍵字 (複選)</div>
+            <div id="keywordList" class="keyword-list"></div>
+        </div>
+    </div>
+
+    <!-- 右側預覽區 -->
+    <div class="preview-section">
+        <h3>即時預覽成品</h3>
+        <p style="font-size: 12px; color: #666; margin-top: 4px;">(可在卡片上直接拖拽圖片移動、滾輪縮放圖片)</p>
+        <br>
+        <div class="card-preview" id="cardPreview">
+            <img id="bgImg" class="card-bg-image" src="" alt="Card Illustration">
+            <img id="uiFrameImg" class="card-ui-frame" src="" alt="Card UI Frame">
+            <div id="prevCost" class="card-stat-text cost-normal">0</div>
+            <div id="prevSource" class="card-stat-text source-normal">0</div>
+            <div id="prevAP" class="card-stat-text stat-ap">0</div>
+            <div id="prevDP" class="card-stat-text stat-dp">0</div>
+            <div id="prevName" class="card-name-text name-normal"></div>
+
+            <div class="card-effect horizontal-mode" id="prevEffect"></div>
+        </div>
+
+        <div class="preview-actions">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <button type="button" class="btn btn-upload" id="uploadBtn">上傳圖片</button>
+            <button type="button" class="btn btn-rotate" id="rotateImgBtn">旋轉圖片</button>
+            <button type="button" class="btn btn-reset" id="resetImgBtn">重置位置</button>
+            <button type="button" class="btn btn-clear" id="clearImgBtn">清除圖片</button>
+            <button type="button" class="btn btn-download" id="downloadBtn">下載卡圖</button>
+        </div>
+    </div>
+</div>
+
+<script src="js.js"></script>
+
+</body>
+</html>
