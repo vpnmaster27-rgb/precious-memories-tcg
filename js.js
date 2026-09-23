@@ -239,7 +239,6 @@ const cardUIImages = {
         }
     }
 
-    // 計算圖片在 CSS object-fit 下的縮放尺寸
     function getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit) {
         if (objectFit === 'cover') {
             const s = Math.max(boxW / imgNW, boxH / imgNH);
@@ -380,7 +379,6 @@ const cardUIImages = {
         const currentType = cardTypeInput.value;
         const allowedIds = allowedKeywordsByType[currentType] || [];
         
-        // 暫存目前的自定義關鍵字狀態（防止切換卡片類型時輸入內容消失）
         const oldCustomCb = document.getElementById('customKwCheckbox');
         const oldCustomName = document.getElementById('customKwName');
         const oldCustomVal = document.getElementById('customKwVal');
@@ -394,7 +392,6 @@ const cardUIImages = {
         keywordListContainer.innerHTML = '';
         const activeKeywords = allKeywords.filter(kw => allowedIds.includes(kw.id));
 
-        // 1. 渲染既有預設關鍵字
         activeKeywords.forEach(kw => {
             const label = document.createElement('label');
             label.className = 'keyword-item';
@@ -426,7 +423,6 @@ const cardUIImages = {
             keywordListContainer.appendChild(label);
         });
 
-        // 2. 在最後面渲染自定義關鍵字項目
         const customLabel = document.createElement('label');
         customLabel.className = 'keyword-item';
 
@@ -481,6 +477,46 @@ const cardUIImages = {
         }
 
         updatePreview();
+    }
+
+    // 自動微調效果欄字體大小，避免超出效果框
+    function fitEffectText(el) {
+        if (!el) return;
+        
+        let fontSize = 9.5; // 效果欄預設最大字體 (px)
+        const minFontSize = 3.5; // 最小縮放限制 (px)
+        el.style.fontSize = `${fontSize}px`;
+
+        while (
+            (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) &&
+            fontSize > minFontSize
+        ) {
+            fontSize -= 0.2;
+            el.style.fontSize = `${fontSize}px`;
+        }
+    }
+
+    // 自動微調卡片名稱字體大小，避免超出卡名欄寬度/高度
+    function fitNameText(el, selectedType) {
+        if (!el) return;
+        
+        let fontSize = (selectedType === 'event') ? 13 : 15; // 事件卡直書預設 13px，其餘 15px
+        const minFontSize = 7; // 卡名最小縮放限制 (px)
+        el.style.fontSize = `${fontSize}px`;
+
+        if (selectedType === 'event') {
+            // 事件卡（直書模式）：超出高度時縮小
+            while (el.scrollHeight > el.clientHeight && fontSize > minFontSize) {
+                fontSize -= 0.5;
+                el.style.fontSize = `${fontSize}px`;
+            }
+        } else {
+            // 一般卡片（橫書模式）：超出寬度時縮小
+            while (el.scrollWidth > el.clientWidth && fontSize > minFontSize) {
+                fontSize -= 0.5;
+                el.style.fontSize = `${fontSize}px`;
+            }
+        }
     }
 
     function updatePreview() {
@@ -545,7 +581,6 @@ const cardUIImages = {
 
         let selectedKeywordsText = [];
         
-        // 1. 收集預設勾選的關鍵字
         allKeywords.forEach(kw => {
             const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
             if (cb) {
@@ -561,7 +596,6 @@ const cardUIImages = {
             }
         });
 
-        // 2. 收集自定義關鍵字
         const customCb = document.getElementById('customKwCheckbox');
         const customNameInput = document.getElementById('customKwName');
         const customValInput = document.getElementById('customKwVal');
@@ -588,6 +622,10 @@ const cardUIImages = {
         }
 
         prevEffect.innerHTML = finalEffectContent;
+
+        // 計算並自動縮小字級，分別適應效果欄與卡名欄位
+        fitEffectText(prevEffect);
+        fitNameText(prevName, selectedType);
     }
 
 init();
