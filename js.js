@@ -33,15 +33,15 @@ const cardUIImages = {
         { id: 'active', name: 'アクティブ', hasNumber: false, group: null },
         { id: 'kyoin', name: '強引', hasNumber: false, group: null },
         { id: 'gaman', name: '我慢', hasNumber: false, group: null },
-        { id: 'tokka', name: '突破', hasNumber: true, defaultVal: 30, group: null },
+        { id: 'toppa', name: '突破', hasNumber: true, defaultVal: 30, group: null },
         { id: 'tennen', name: '天然', hasNumber: true, defaultVal: 0, group: null },
     ];
 
     const allowedKeywordsByType = {
-        character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'tokka', 'combi', 'gyakukyo'],
-        character_nonum: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'tokka', 'combi', 'gyakukyo'],
+        character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'toppa', 'combi'],
+        character_nonum: [ 'ex', 'combi'],
         event: ['ex', 'break'],
-        support: ['ex', 'gyakukyo']
+        support: ['ex']
     };
 
     let currentTagState = {
@@ -273,7 +273,6 @@ const cardUIImages = {
                         const boxW = origPreview.offsetWidth;
                         const boxH = origPreview.offsetHeight;
 
-                        // 創建高解析度 (2倍) 離屏 Canvas 預繪製底圖
                         const scaleFactor = 2;
                         const bakeCanvas = document.createElement('canvas');
                         bakeCanvas.width = boxW * scaleFactor;
@@ -282,7 +281,6 @@ const cardUIImages = {
 
                         ctx.scale(scaleFactor, scaleFactor);
 
-                        // 取得 CSS object-fit 樣式設定
                         const computedStyle = window.getComputedStyle(origBgImg);
                         const objectFit = computedStyle.objectFit || 'cover';
 
@@ -290,15 +288,12 @@ const cardUIImages = {
                         const imgNH = origBgImg.naturalHeight;
                         const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
 
-                        // 套用與 preview 一致的 Transform 繪製
                         ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
                         ctx.rotate((imgState.rotation * Math.PI) / 180);
                         ctx.scale(imgState.scale, imgState.scale);
 
-                        // 以中心點對齊繪製
                         ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
 
-                        // 將烘焙結果賦予複製節點並清除 CSS transform，避免 html2canvas 誤判
                         clonedBgImg.src = bakeCanvas.toDataURL('image/png');
                         clonedBgImg.style.transform = 'none';
                         clonedBgImg.style.top = '0';
@@ -385,9 +380,21 @@ const cardUIImages = {
         const currentType = cardTypeInput.value;
         const allowedIds = allowedKeywordsByType[currentType] || [];
         
+        // 暫存目前的自定義關鍵字狀態（防止切換卡片類型時輸入內容消失）
+        const oldCustomCb = document.getElementById('customKwCheckbox');
+        const oldCustomName = document.getElementById('customKwName');
+        const oldCustomVal = document.getElementById('customKwVal');
+        
+        const savedCustomState = {
+            checked: oldCustomCb ? oldCustomCb.checked : false,
+            name: oldCustomName ? oldCustomName.value : '',
+            val: oldCustomVal ? oldCustomVal.value : ''
+        };
+
         keywordListContainer.innerHTML = '';
         const activeKeywords = allKeywords.filter(kw => allowedIds.includes(kw.id));
 
+        // 1. 渲染既有預設關鍵字
         activeKeywords.forEach(kw => {
             const label = document.createElement('label');
             label.className = 'keyword-item';
@@ -418,6 +425,40 @@ const cardUIImages = {
 
             keywordListContainer.appendChild(label);
         });
+
+        // 2. 在最後面渲染自定義關鍵字項目
+        const customLabel = document.createElement('label');
+        customLabel.className = 'keyword-item';
+
+        const customCb = document.createElement('input');
+        customCb.type = 'checkbox';
+        customCb.id = 'customKwCheckbox';
+        customCb.checked = savedCustomState.checked;
+        customCb.addEventListener('change', updatePreview);
+
+        const customNameInput = document.createElement('input');
+        customNameInput.type = 'text';
+        customNameInput.id = 'customKwName';
+        customNameInput.className = 'custom-kw-input';
+        customNameInput.placeholder = '自定義關鍵字';
+        customNameInput.value = savedCustomState.name;
+        customNameInput.addEventListener('input', updatePreview);
+        customNameInput.addEventListener('click', (e) => e.stopPropagation());
+
+        const customValInput = document.createElement('input');
+        customValInput.type = 'text';
+        customValInput.id = 'customKwVal';
+        customValInput.className = 'number-input';
+        customValInput.placeholder = '數值';
+        customValInput.value = savedCustomState.val;
+        customValInput.addEventListener('input', updatePreview);
+        customValInput.addEventListener('click', (e) => e.stopPropagation());
+
+        customLabel.appendChild(customCb);
+        customLabel.appendChild(customNameInput);
+        customLabel.appendChild(customValInput);
+
+        keywordListContainer.appendChild(customLabel);
     }
 
     function handleKeywordChange(e) {
@@ -503,6 +544,8 @@ const cardUIImages = {
         }
 
         let selectedKeywordsText = [];
+        
+        // 1. 收集預設勾選的關鍵字
         allKeywords.forEach(kw => {
             const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
             if (cb) {
@@ -517,6 +560,20 @@ const cardUIImages = {
                 selectedKeywordsText.push(`<b>${text}</b>`);
             }
         });
+
+        // 2. 收集自定義關鍵字
+        const customCb = document.getElementById('customKwCheckbox');
+        const customNameInput = document.getElementById('customKwName');
+        const customValInput = document.getElementById('customKwVal');
+
+        if (customCb && customCb.checked) {
+            const kwName = customNameInput ? customNameInput.value.trim() : '';
+            const kwVal = customValInput ? customValInput.value.trim() : '';
+            
+            if (kwName !== '') {
+                selectedKeywordsText.push(`<b>〔${kwName}${kwVal}〕</b>`);
+            }
+        }
 
         const userEffectText = cardEffectInput.value;
         let finalEffectContent = "";
