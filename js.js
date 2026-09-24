@@ -62,7 +62,7 @@ function initTagButtons() {
             const text = btn.dataset.text;
             let imgSrc = btn.dataset.imgSrc;
             if (btn.dataset.num !== undefined) {
-                imgSrc = `img/num_${btn.dataset.num}.png`; // 圖片名稱格式，如 img/num_0.png ~ img/num_9.png
+                imgSrc = `img/num_${btn.dataset.num}.png`;
             }
             let currentVal = cardEffectInput.value;
 
@@ -203,10 +203,9 @@ function initStepperControls() {
 
         let currentNum = parseInt(displayBtn.dataset.num || '6', 10);
 
-        // 向上增加 (最高 9)
         btnUp.addEventListener('click', (e) => {
             e.preventDefault();
-            if (currentNum < 9) {
+            if (currentNum < 10) {
                 currentNum++;
                 displayBtn.dataset.num = currentNum;
                 displayVal.textContent = currentNum;
