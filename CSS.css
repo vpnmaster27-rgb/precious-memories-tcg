@@ -153,12 +153,12 @@
             height: 100%;
             object-fit: fill;
             pointer-events: none;
-            z-index: 2;
+            z-index: 3 !important;
         }
 
         #bgImg {
             position: absolute;
-            z-index: 1;
+            z-index: 1 !important;
         }
 
         .card-preview:active {
@@ -172,7 +172,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            z-index: 0;
+            z-index: 1 !important;
             display: none;
             transform-origin: center center;
             pointer-events: none;
@@ -186,13 +186,13 @@
             height: 520px;
             object-fit: fill;
             pointer-events: none;
-            z-index: 1;
+            z-index: 3 !important;
             display: none;
         }
 
         .card-stat-text {
             position: absolute;
-            z-index: 2;
+            z-index: 4 !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic", sans-serif;
             font-weight: light;
             color: white;
@@ -259,7 +259,7 @@
         /* 卡片名稱定位 */
         .card-name-text {
             position: absolute;
-            z-index: 2;
+            z-index: 4 !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic", sans-serif;
             font-weight: bold;
             color: white;
@@ -309,7 +309,7 @@
 
         .card-effect {
             position: absolute;
-            z-index: 2;
+            z-index: 4 !important;
             font-size: 9.5px;
             font-weight: 550; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic", sans-serif;
@@ -394,6 +394,38 @@
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+
+        .card-effect-bg {
+            position: absolute;
+            z-index: 2 !important;
+            background-color: #ffffff;
+            display: none; /* 預設半透明勾選時不顯示底色 */
+            pointer-events: none;
+            pointer-events: none;
+            border-radius: 4px;
+        }   
+
+        .card-preview[data-type="character_num"] .card-effect-bg,
+        .card-preview[data-type="character_nonum"] .card-effect-bg {
+            top: 388px;
+            left: 22px;
+            width: 340px;
+            height: 100px;
+        }
+
+        .card-preview[data-type="support"] .card-effect-bg {
+            top: 402px;
+            left: 20px;
+            width: 332px;
+            height: 85px;
+        }
+
+        .card-preview[data-type="event"] .card-effect-bg {
+            top: 265px;
+            left: 20px;
+            width: 450px;
+            height: 80px;
         }
 
         .btn-upload { background-color: #4da6ff; color: white; }

@@ -97,13 +97,13 @@
         <br>
         <div class="card-preview" id="cardPreview">
             <img id="bgImg" class="card-bg-image" src="" alt="Card Illustration">
+            <div id="effectBg" class="card-effect-bg"></div>
             <img id="uiFrameImg" class="card-ui-frame" src="" alt="Card UI Frame">
             <div id="prevCost" class="card-stat-text cost-normal">0</div>
             <div id="prevSource" class="card-stat-text source-normal">0</div>
             <div id="prevAP" class="card-stat-text stat-ap">0</div>
             <div id="prevDP" class="card-stat-text stat-dp">0</div>
             <div id="prevName" class="card-name-text name-normal"></div>
-
             <div class="card-effect horizontal-mode" id="prevEffect"></div>
         </div>
 
@@ -114,6 +114,10 @@
             <button type="button" class="btn btn-reset" id="resetImgBtn">重置位置</button>
             <button type="button" class="btn btn-clear" id="clearImgBtn">清除圖片</button>
             <button type="button" class="btn btn-download" id="downloadBtn">下載卡圖</button>
+            <label class="checkbox-label" style="display: inline-flex; align-items: center; gap: 4px; font-size: 14px; user-select: none; cursor: pointer;">
+                <input type="checkbox" id="transparentEffectCb" checked>
+                效果欄半透明
+            </label>
         </div>
     </div>
 </div>
