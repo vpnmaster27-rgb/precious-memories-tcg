@@ -60,21 +60,33 @@ function initTagButtons() {
             
             const group = btn.dataset.group;
             const text = btn.dataset.text;
+            let imgSrc = btn.dataset.imgSrc;
+            if (btn.dataset.num !== undefined) {
+                imgSrc = `img/num_${btn.dataset.num}.png`; // 圖片名稱格式，如 img/num_0.png ~ img/num_9.png
+            }
             let currentVal = cardEffectInput.value;
+
+            // 判斷要插入的是圖片還是文字
+            const insertContent = imgSrc 
+                ? `<img src="${imgSrc}" class="inline-effect-icon">` 
+                : text;
 
             if (group === '3') {
                 if (currentVal.length > 0 && !currentVal.endsWith('\n')) {
                     currentVal += '\n';
                 }
-                currentVal += text;
+                currentVal += insertContent;
+
+            } else if (group === '4') {
+                currentVal += insertContent;
 
             } else if (group === '1') {
                 if (currentTagState.group1 && !currentTagState.group2) {
-                    currentVal = currentVal.slice(0, -currentTagState.group1.length) + text;
+                    currentVal = currentVal.slice(0, -currentTagState.group1.length) + insertContent;
                 } else if (!currentTagState.group1 && currentTagState.group2) {
                     const tag2Len = currentTagState.group2.length;
                     const beforeTag2 = currentVal.slice(0, -tag2Len);
-                    currentVal = beforeTag2 + text + currentTagState.group2;
+                    currentVal = beforeTag2 + insertContent + currentTagState.group2;
                     
                     currentTagState.group1 = null;
                     currentTagState.group2 = null;
@@ -85,21 +97,21 @@ function initTagButtons() {
                     if (currentVal.length > 0 && !currentVal.endsWith('\n')) {
                         currentVal += '\n';
                     }
-                    currentVal += text;
+                    currentVal += insertContent;
                     currentTagState.group2 = null;
                 }
-                currentTagState.group1 = text;
+                currentTagState.group1 = insertContent;
 
             } else if (group === '2') {
                 if (currentTagState.group2) {
-                    currentVal = currentVal.slice(0, -currentTagState.group2.length) + text;
+                    currentVal = currentVal.slice(0, -currentTagState.group2.length) + insertContent;
                 } else {
                     if (!currentTagState.group1 && currentVal.length > 0 && !currentVal.endsWith('\n')) {
                         currentVal += '\n';
                     }
-                    currentVal += text;
+                    currentVal += insertContent;
                 }
-                currentTagState.group2 = text;
+                currentTagState.group2 = insertContent;
 
                 if (currentTagState.group1) {
                     currentTagState.group1 = null;
@@ -178,6 +190,39 @@ function clearImage() {
     bgImg.style.display = 'none';
     imageInput.value = '';
     resetImageTransform();
+}
+
+function initStepperControls() {
+    const steppers = document.querySelectorAll('.number-img-stepper');
+    
+    steppers.forEach(stepper => {
+        const btnUp = stepper.querySelector('.btn-up');
+        const btnDown = stepper.querySelector('.btn-down');
+        const displayBtn = stepper.querySelector('.stepper-display-btn');
+        const displayVal = stepper.querySelector('.stepper-val');
+
+        let currentNum = parseInt(displayBtn.dataset.num || '6', 10);
+
+        // 向上增加 (最高 9)
+        btnUp.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentNum < 9) {
+                currentNum++;
+                displayBtn.dataset.num = currentNum;
+                displayVal.textContent = currentNum;
+            }
+        });
+
+        // 向下減少 (最低 0)
+        btnDown.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentNum > 0) {
+                currentNum--;
+                displayBtn.dataset.num = currentNum;
+                displayVal.textContent = currentNum;
+            }
+        });
+    });
 }
 
 function initImageControls() {
@@ -352,7 +397,7 @@ function init() {
 
     initImageControls();
     initTagButtons();
-    
+    initStepperControls();
     renderKeywords();
     handleNumberState();
     updatePreview();
@@ -361,9 +406,13 @@ function init() {
 function handleNumberState() {
     const currentType = cardTypeInput.value;
     const hasNumber = (currentType === 'character_num');
-
+    const isCharacter = (currentType === 'character_num' || currentType === 'character_nonum');
     statAPInput.disabled = !hasNumber;
     statDPInput.disabled = !hasNumber;
+    const charOnlyBtns = document.querySelectorAll('.character-only-btn');
+    charOnlyBtns.forEach(btn => {
+        btn.style.display = isCharacter ? 'inline-block' : 'none';
+    });
 }
 
 function handleImageUpload(e) {

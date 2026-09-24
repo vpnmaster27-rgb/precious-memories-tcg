@@ -47,6 +47,38 @@
             color: #333;
         }
 
+        /* 數字動態圖片按鈕計數器容器 */
+        .number-img-stepper {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+        }
+
+        /* 上下箭頭按鈕小樣式 */
+        .number-img-stepper .stepper-btn {
+            background: transparent;
+            border: none;
+            font-size: 30px;
+            line-height: 1;
+            padding: 1px 4px;
+            cursor: pointer;
+            color: #555;
+            user-select: none;
+        }
+
+        .number-img-stepper .stepper-btn:hover {
+            color: #000;
+        }
+
+        /* 中間按鈕樣式 */
+        .number-img-stepper .stepper-display-btn {
+            padding: 8px 1px;
+            font-weight: bold;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
         input, select, textarea {
             padding: 8px 12px;
             border: 1px solid #ccc;
@@ -363,6 +395,13 @@
             font-family: "Yu Gothic", "MS Gothic", "Hiragino Kaku Gothic Pro", sans-serif;
         }
 
+        .card-effect img.inline-effect-icon {
+            height: 1.1em;             /* 自動縮放到與文字同高 */
+            vertical-align: -0.15em;    /* 微調與文字基線對齊 */
+            display: inline-block;
+            margin: 0 3px;
+        }
+        
         .preview-actions {
             margin-top: 20px;
             display: flex;
@@ -426,6 +465,38 @@
             left: 20px;
             width: 450px;
             height: 80px;
+        }
+
+        .tag-btn-group .tag-btn {
+            height: 28px;  /*  統一按鈕高度*/
+            line-height: 1;
+            padding: 0 10px;           
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .tag-btn-group .number-img-stepper {
+            height: 28px;
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .tag-btn-group .number-img-stepper .stepper-btn {
+            font-size: 15px;
+            height: 8px;
+            line-height: 8px;
+            padding: 0;
+            margin: 0;
+        }
+
+        .tag-btn-group .number-img-stepper .stepper-display-btn {
+            height: 28px;
+            padding: 0 6px;
+            font-size: 15px;
         }
 
         .btn-upload { background-color: #4da6ff; color: white; }
