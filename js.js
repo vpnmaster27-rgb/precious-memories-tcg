@@ -156,6 +156,8 @@ const resetImgBtn = document.getElementById('resetImgBtn');
 const clearImgBtn = document.getElementById('clearImgBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const rotateImgBtn = document.getElementById('rotateImgBtn');
+const cardNumberInput = document.getElementById('cardNumber');
+const prevNumber = document.getElementById('prevNumber');
 
 let imgState = {
     scale: 1,
@@ -384,6 +386,7 @@ function init() {
     }
 
     cardNameInput.addEventListener('input', updatePreview);
+    cardNumberInput.addEventListener('input', updatePreview);
     statCInput.addEventListener('input', updatePreview);
     statSInput.addEventListener('input', updatePreview);
     statAPInput.addEventListener('input', updatePreview);
@@ -592,6 +595,7 @@ function updatePreview() {
         prevCost.className = 'card-stat-text cost-event';
         prevSource.className = 'card-stat-text source-event';
         prevName.className = 'card-name-text name-event';
+        prevNumber.className = 'card-number-text number-event';
         prevAP.style.display = 'none';
         prevDP.style.display = 'none';
     } else if (selectedType === 'support') {
@@ -599,6 +603,7 @@ function updatePreview() {
         prevCost.className = 'card-stat-text cost-normal';
         prevSource.className = 'card-stat-text source-normal';
         prevName.className = 'card-name-text name-support';
+        prevNumber.className = 'card-number-text number-normal';
         prevAP.style.display = 'none';
         prevDP.style.display = 'none';
     } else {
@@ -606,6 +611,7 @@ function updatePreview() {
         prevCost.className = 'card-stat-text cost-normal';
         prevSource.className = 'card-stat-text source-normal';
         prevName.className = 'card-name-text name-normal';
+        prevNumber.className = 'card-number-text number-normal';
 
         if (selectedType === 'character_num') {
             prevAP.style.display = 'flex';
@@ -630,6 +636,8 @@ function updatePreview() {
     } else {
         prevName.textContent = nameValue;
     }
+        prevNumber.textContent = cardNumberInput.value || '';
+
 
     let selectedKeywordsText = [];
     
