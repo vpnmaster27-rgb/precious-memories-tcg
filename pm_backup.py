@@ -4,13 +4,10 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-# 1️⃣ 要爬取的目標頁面網址（改這裡）
 TARGET_URL = "http://www.p-memories.com/card_product_list_page?field_title_nid=935073-%E3%81%8B%E3%81%90%E3%82%84%E6%A7%98%E3%81%AF%E5%91%8A%E3%82%89%E3%81%9B%E3%81%9F%E3%81%84%EF%BD%9E%E5%A4%A9%E6%89%8D%E3%81%9F%E3%81%A1%E3%81%AE%E6%81%8B%E6%84%9B%E9%A0%AD%E8%84%B3%E6%88%A6%EF%BD%9E&s_flg=on"
 
-# 2️⃣ 圖片要存到哪個資料夾（改這裡）
 SAVE_DIR = "爬蟲(未分類)"
 
-# 3️⃣ 圖片網址的來源網站（通常不用改）
 BASE_URL = "http://www.p-memories.com"
 
 # ============================================================
@@ -26,7 +23,7 @@ HEADERS = {
 
 def download_image(img_url, folder_path):
     """下載單張圖片，回傳 True/False"""
-    filename = os.path.basename(img_url.split("?")[0])  # 去掉可能的 query string
+    filename = os.path.basename(img_url.split("?")[0]) 
     file_path = os.path.join(folder_path, filename)
 
     if os.path.exists(file_path):
@@ -57,7 +54,7 @@ def is_card_preview(tag):
 
 
 def main():
-    # 建立儲存資料夾
+    
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     print(f"🚀 正在連線至：{TARGET_URL}")
@@ -70,7 +67,6 @@ def main():
 
     soup = BeautifulSoup(res.text, "lxml")
 
-    # 抓出所有 class 以 cardPreview 開頭的 <a>
     previews = [a for a in soup.find_all("a") if is_card_preview(a)]
     print(f"🎯 共找到 {len(previews)} 個 cardPreview 標籤\n")
 
@@ -85,14 +81,13 @@ def main():
         if not src:
             continue
 
-        # 自動把相對路徑補成完整網址
         full_url = urljoin(BASE_URL, src)
 
         print(f"[{i}/{len(previews)}] {full_url}")
         if download_image(full_url, SAVE_DIR):
             success += 1
 
-        time.sleep(0.05)  # 禮貌延遲
+        time.sleep(0.05)  
 
     print(f"\n🎉 完成！本次成功下載 {success} 張圖片，存放於：{SAVE_DIR}")
 
