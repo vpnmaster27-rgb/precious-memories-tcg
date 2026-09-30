@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-TARGET_URL = "http://www.p-memories.com/card_product_list_page?field_title_nid=935073-%E3%81%8B%E3%81%90%E3%82%84%E6%A7%98%E3%81%AF%E5%91%8A%E3%82%89%E3%81%9B%E3%81%9F%E3%81%84%EF%BD%9E%E5%A4%A9%E6%89%8D%E3%81%9F%E3%81%A1%E3%81%AE%E6%81%8B%E6%84%9B%E9%A0%AD%E8%84%B3%E6%88%A6%EF%BD%9E&s_flg=on"
+TARGET_URL = "http://www.p-memories.com/card_product_list_page?field_title_nid=932224-%E5%8A%87%E5%A0%B4%E7%89%88+%E3%83%80%E3%83%B3%E3%82%B8%E3%83%A7%E3%83%B3%E3%81%AB%E5%87%BA%E4%BC%9A%E3%81%84%E3%82%92%E6%B1%82%E3%82%81%E3%82%8B%E3%81%AE%E3%81%AF%E9%96%93%E9%81%95%E3%81%A3%E3%81%A6%E3%81%84%E3%82%8B%E3%81%A0%E3%82%8D%E3%81%86%E3%81%8B+%E2%80%95%E3%82%AA%E3%83%AA%E3%82%AA%E3%83%B3%E3%81%AE%E7%9F%A2%E2%80%95&s_flg=on"
 
 SAVE_DIR = "爬蟲(未分類)"
 
