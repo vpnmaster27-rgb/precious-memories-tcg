@@ -142,21 +142,22 @@
         </div>
         <!-- container 結尾 -->
     </div>
-    <!-- pageEditor 結尾 -->
 
     <!-- 第二頁：官方卡表 -->
     <div id="pageGallery" class="page">
         <div class="gallery-container">
-
-            <!-- 系列列表畫面 -->
+            
             <div id="gallerySeriesView">
                 <div class="gallery-header">
-                    <h2>官方卡表</h2>
+                    <h2>官方卡圖</h2>
+                    <div class="gallery-sort-bar">
+                        <button type="button" id="sortByDate" class="sort-btn active">發售日期排序</button>
+                        <button type="button" id="sortByName" class="sort-btn">名稱排序</button>
+                    </div>
                 </div>
                 <div class="gallery-content" id="gallerySeriesList"></div>
             </div>
 
-            <!-- 系列內卡圖畫面 -->
             <div id="galleryCardsView" style="display: none;">
                 <div class="gallery-header">
                     <h2 id="galleryCardsTitle">系列名稱</h2>

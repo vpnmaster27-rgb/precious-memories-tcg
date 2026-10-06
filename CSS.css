@@ -641,6 +641,32 @@
             word-break: break-all;
         }
 
+                /* 排序按鈕列 */
+        .gallery-sort-bar {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .sort-btn {
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            color: #4da6ff;
+            cursor: pointer;
+            padding: 4px 2px;
+            font-weight: bold;
+            transition: color 0.15s;
+        }
+
+        .sort-btn:hover {
+            color: #3385d6;
+        }
+
+        .sort-btn.active {
+            color: #ff8c00;
+        }
+
         /*  卡表css尾*/
 
         .btn-upload { background-color: #4da6ff; color: white; }

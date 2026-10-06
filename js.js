@@ -1,4 +1,4 @@
-const gallerySeries = [
+const gallerySeriesByName = [
     "AKB0048",
     "Aチャンネル",
     "ClariS",
@@ -112,10 +112,122 @@ const gallerySeries = [
     "魔法科高校の劣等生 来訪者編"
 ];
 
+const gallerySeriesByDate = [
+    "グリッドマン ユニバース",
+    "SSSS.GRIDMAN",
+    "TVアニメ「かぐや様は告らせたい-ウルトラロマンティック-」",
+    "かぐや様は告らせたい～天才たちの恋愛頭脳戦～",
+    "劇場版 魔法少女まどか☆マギカ[新編]叛逆の物語",
+    "劇場版 魔法少女まどか☆マギカ",
+    "魔法少女まどか☆マギカ",
+    "ガールズ＆パンツァー 最終章",
+    "ガールズ＆パンツァー　劇場版",
+    "ガールズ＆パンツァー",
+    "劇場版「きんいろモザイクThank you!!」",
+    "きんいろモザイク Pretty Days",
+    "ハロー！！きんいろモザイク",
+    "きんいろモザイク",
+    "映画「けいおん！」",
+    "けいおん！！Part.2",
+    "けいおん！！",
+    "けいおん！Part2",
+    "けいおん！",
+    "ダンジョンに出会いを求めるのは間違っているだろうかⅢ",
+    "ダンジョンに出会いを求めるのは間違っているだろうかⅡ",
+    "劇場版 ダンジョンに出会いを求めるのは間違っているだろうか ―オリオンの矢―",
+    "おちこぼれフルーツタルト",
+    "劇場版 あの日見た花の名前を僕達はまだ知らない。",
+    "あの日見た花の名前を僕達はまだ知らない。",
+    "NEW GAME!!",
+    "NEW GAME!",
+    "魔法科高校の劣等生 来訪者編",
+    "劇場版 魔法科高校の劣等生 星を呼ぶ少女",
+    "俺の妹がこんなに可愛いわけがない",
+    "俺の妹がこんなに可愛いわけがない。",
+    "やはり俺の青春ラブコメはまちがっている。完",
+    "やはり俺の青春ラブコメはまちがっている。続",
+    "やはり俺の青春ラブコメはまちがっている。",
+    "初音ミク",
+    "傷物語",
+    "_物語_シリーズ",
+    "_物語_シリーズ セカンドシーズン",
+    "偽物語",
+    "化物語",
+    "とある科学の超電磁砲T",
+    "とある科学の超電磁砲＆とある科学の超電磁砲Ｓ",
+    "ネコぱら",
+    "私、能力は平均値でって言ったよね！",
+    "俺を好きなのはお前だけかよ",
+    "ましろ色シンフォニー",
+    "ゆるゆり、",
+    "ゆるゆり　なちゅやちゅみ！",
+    "ゆるゆり♪♪",
+    "ゆるゆり",
+    "ぼくたちは勉強ができない！",
+    "劇場版「SHIROBAKO」",
+    "SHIROBAKO",
+    "まちカドまぞく",
+    "ゆるキャン△",
+    "五等分の花嫁",
+    "劇場版 ハイスクール・フリート",
+    "ハイスクール・フリート",
+    "グランベルム",
+    "結城友奈は勇者である -鷲尾須美の章-_-勇者の章-",
+    "結城友奈は勇者である",
+    "がっこうぐらし！",
+    "八月のシンデレラナイン",
+    "Aチャンネル",
+    "ひだまりスケッチ",
+    "ひだまりスケッチ×ハニカム",
+    "ハナヤマタ",
+    "ケムリクサ",
+    "ゾンビランドサガ",
+    "RELEASE THE SPYCE",
+    "はたらく細胞",
+    "ポプテピピック",
+    "STEINS;GATE",
+    "ハイスクールＤ×Ｄ HERO",
+    "ハイスクールＤ×Ｄ ＢｏｒＮ",
+    "とらドラ！",
+    "怪獣娘（黒）",
+    "エロマンガ先生",
+    "ノーゲーム・ノーライフ ゼロ",
+    "フレームアームズ・ガール",
+    "ハンドシェイカー",
+    "学戦都市アスタリスク",
+    "WORKING!!!",
+    "WORKING´!!",
+    "WORKING！！",
+    "ささみさん＠がんばらない",
+    "咲-Saki- 全国編",
+    "恋愛ラボ",
+    "冴えない彼女の育てかた",
+    "カードキャプターさくら",
+    "百花繚乱 サムライブライド",
+    "百花繚乱 サムライガールズ",
+    "アマガミSS+ plus",
+    "みなみけ",
+    "俺の彼女と幼なじみが修羅場すぎる",
+    "さくら荘のペットな彼女",
+    "魔法使いの夜",
+    "恋と選挙とチョコレート",
+    "ココロネクト",
+    "生徒会の一存 Lv.2",
+    "AKB0048",
+    "夏色キセキ",
+    "侵略!_イカ娘",
+    "侵略！イカ娘",
+    "神様のメモ帳",
+    "カーニバル・ファンタズム",
+    "まよチキ！",
+    "電波女と青春男",
+    "オオカミさんと七人の仲間たち",
+    "刀語",
+    "ClariS"
+];
+
 const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';   // 依你實際資料夾圖示路徑修改
 const GALLERY_BASE = '官方卡圖';             // 卡圖的根目錄，依你實際結構修改
-
-
 
 const cardUIImages = {
     red_character_num: "img/紅色有數字.png",
@@ -277,6 +389,8 @@ const rotateImgBtn = document.getElementById('rotateImgBtn');
 const cardNumberInput = document.getElementById('cardNumber');
 const prevNumber = document.getElementById('prevNumber');
 
+let currentGallerySort = 'date'; /*預設資料夾排序，可以改成name*/ 
+
 let imgState = {
     scale: 1,
     translateX: 0,
@@ -286,6 +400,10 @@ let imgState = {
     startX: 0,
     startY: 0
 };
+
+function getCurrentGallerySeries() {
+    return currentGallerySort === 'name' ? gallerySeriesByName : gallerySeriesByDate;
+}
 
 function applyImageTransform() {
     bgImg.style.transform = `translate(${imgState.translateX}px, ${imgState.translateY}px) scale(${imgState.scale}) rotate(${imgState.rotation}deg)`;
@@ -491,12 +609,46 @@ async function downloadCard() {
     }
 }
 
+function initGallerySortButtons() {
+    const sortNameBtn = document.getElementById('sortByName');
+    const sortDateBtn = document.getElementById('sortByDate');
+
+    if (!sortNameBtn || !sortDateBtn) return;
+
+    sortNameBtn.addEventListener('click', () => {
+        currentGallerySort = 'name';
+        renderGallerySeriesList();
+    });
+
+    sortDateBtn.addEventListener('click', () => {
+        currentGallerySort = 'date';
+        renderGallerySeriesList();
+    });
+}
+
+function updateGallerySortButtons() {
+    const sortNameBtn = document.getElementById('sortByName');
+    const sortDateBtn = document.getElementById('sortByDate');
+
+    if (!sortNameBtn || !sortDateBtn) return;
+
+    if (currentGallerySort === 'name') {
+        sortNameBtn.classList.add('active');
+        sortDateBtn.classList.remove('active');
+    } else {
+        sortDateBtn.classList.add('active');
+        sortNameBtn.classList.remove('active');
+    }
+}
+
 function renderGallerySeriesList() {
     const list = document.getElementById('gallerySeriesList');
     if (!list) return;
     list.innerHTML = '';
 
-    gallerySeries.forEach(seriesName => {
+    const seriesArray = getCurrentGallerySeries();
+
+    seriesArray.forEach(seriesName => {
         const folder = document.createElement('div');
         folder.className = 'series-folder';
 
@@ -514,6 +666,8 @@ function renderGallerySeriesList() {
 
         list.appendChild(folder);
     });
+
+    updateGallerySortButtons();
 }
 
 function openSeries(seriesName) {
@@ -598,6 +752,7 @@ function init() {
     handleNumberState();
     updatePreview();
     initPageNavigation();
+    initGallerySortButtons();
     renderGallerySeriesList();
 }
 
