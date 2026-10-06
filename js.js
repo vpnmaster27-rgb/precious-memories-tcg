@@ -450,7 +450,6 @@ function initStepperControls() {
             }
         });
 
-        // 向下減少 (最低 0)
         btnDown.addEventListener('click', (e) => {
             e.preventDefault();
             if (currentNum > 0) {
@@ -670,16 +669,58 @@ function renderGallerySeriesList() {
     updateGallerySortButtons();
 }
 
-function openSeries(seriesName) {
+const galleryCardsCache = {};
+
+async function loadSeriesCards(seriesName) {
+    if (galleryCardsCache[seriesName]) {
+        return galleryCardsCache[seriesName];
+    }
+
+    const url = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/list.txt';
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('找不到 list.txt');
+
+        const text = await res.text();
+        const files = text.split('\n')
+            .map(line => line.trim())
+            .filter(line => /\.(jpg|jpeg|png|gif|webp)$/i.test(line));
+
+        galleryCardsCache[seriesName] = files;
+        return files;
+    } catch (err) {
+        console.warn(`讀取 ${seriesName} 的 list.txt 失敗：`, err);
+        galleryCardsCache[seriesName] = [];
+        return [];
+    }
+}
+
+async function openSeries(seriesName) {
     const seriesView = document.getElementById('gallerySeriesView');
     const cardsView = document.getElementById('galleryCardsView');
     const title = document.getElementById('galleryCardsTitle');
     const list = document.getElementById('galleryCardsList');
 
     title.textContent = seriesName;
+    list.innerHTML = '<p style="color:#888;">載入中...</p>';
+
+    seriesView.style.display = 'none';
+    cardsView.style.display = 'block';
+    window.scrollTo(0, 0);
+
+    const toggleBtn = document.getElementById('gotoGalleryBtn');
+    toggleBtn.textContent = '回上一頁';
+    toggleBtn.dataset.mode = 'backToSeries';
+
+    const files = await loadSeriesCards(seriesName);
+
     list.innerHTML = '';
 
-    const files = (typeof galleryCards !== 'undefined' && galleryCards[seriesName]) ? galleryCards[seriesName] : [];
+    if (files.length === 0) {
+        list.innerHTML = '<p style="color:#888;">這個系列目前沒有圖片，或 list.txt 不存在。</p>';
+        return;
+    }
 
     files.forEach(fileName => {
         const card = document.createElement('div');
@@ -698,14 +739,6 @@ function openSeries(seriesName) {
 
         list.appendChild(card);
     });
-
-    seriesView.style.display = 'none';
-    cardsView.style.display = 'block';
-
-    const toggleBtn = document.getElementById('gotoGalleryBtn');
-    toggleBtn.textContent = '回上一頁';
-    toggleBtn.dataset.mode = 'backToSeries';
-    window.scrollTo(0, 0);
 }
 
 function backToSeriesList() {
@@ -855,11 +888,9 @@ function renderKeywords() {
     customValInput.value = savedCustomState.val;
     customValInput.addEventListener('input', updatePreview);
     customValInput.addEventListener('click', (e) => e.stopPropagation());
-
     customLabel.appendChild(customCb);
     customLabel.appendChild(customNameInput);
     customLabel.appendChild(customValInput);
-
     keywordListContainer.appendChild(customLabel);
 }
 
