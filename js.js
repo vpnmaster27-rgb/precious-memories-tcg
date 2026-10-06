@@ -1,3 +1,122 @@
+const gallerySeries = [
+    "AKB0048",
+    "Aチャンネル",
+    "ClariS",
+    "NEW GAME!",
+    "NEW GAME!!",
+    "RELEASE THE SPYCE",
+    "SHIROBAKO",
+    "SSSS.GRIDMAN",
+    "STEINS;GATE",
+    "TVアニメ「かぐや様は告らせたい-ウルトラロマンティック-」",
+    "WORKING!!!",
+    "WORKING´!!",
+    "WORKING！！",
+    "_物語_シリーズ",
+    "_物語_シリーズ セカンドシーズン",
+    "あの日見た花の名前を僕達はまだ知らない。",
+    "おちこぼれフルーツタルト",
+    "かぐや様は告らせたい～天才たちの恋愛頭脳戦～",
+    "がっこうぐらし！",
+    "きんいろモザイク",
+    "きんいろモザイク Pretty Days",
+    "けいおん！",
+    "けいおん！Part2",
+    "けいおん！！",
+    "けいおん！！Part.2",
+    "さくら荘のペットな彼女",
+    "ささみさん＠がんばらない",
+    "とある科学の超電磁砲T",
+    "とある科学の超電磁砲＆とある科学の超電磁砲Ｓ",
+    "とらドラ！",
+    "はたらく細胞",
+    "ひだまりスケッチ",
+    "ひだまりスケッチ×ハニカム",
+    "ぼくたちは勉強ができない！",
+    "ましろ色シンフォニー",
+    "まちカドまぞく",
+    "まよチキ！",
+    "みなみけ",
+    "やはり俺の青春ラブコメはまちがっている。",
+    "やはり俺の青春ラブコメはまちがっている。完",
+    "やはり俺の青春ラブコメはまちがっている。続",
+    "ゆるゆり",
+    "ゆるゆり♪♪",
+    "ゆるゆり　なちゅやちゅみ！",
+    "ゆるゆり、",
+    "ゆるキャン△",
+    "アマガミSS+ plus",
+    "エロマンガ先生",
+    "オオカミさんと七人の仲間たち",
+    "カードキャプターさくら",
+    "カーニバル・ファンタズム",
+    "ガールズ＆パンツァー",
+    "ガールズ＆パンツァー 最終章",
+    "ガールズ＆パンツァー　劇場版",
+    "グランベルム",
+    "グリッドマン ユニバース",
+    "ケムリクサ",
+    "ココロコネクト",
+    "ゾンビランドサガ",
+    "ダンジョンに出会いを求めるのは間違っているだろうかⅡ",
+    "ダンジョンに出会いを求めるのは間違っているだろうかⅢ",
+    "ネコぱら",
+    "ノーゲーム・ノーライフ ゼロ",
+    "ハイスクール・フリート",
+    "ハイスクールＤ×Ｄ HERO",
+    "ハイスクールＤ×Ｄ ＢｏｒＮ",
+    "ハナヤマタ",
+    "ハロー！！きんいろモザイク",
+    "ハンドシェイカー",
+    "フレームアームズ・ガール",
+    "ポプテピピック",
+    "五等分の花嫁",
+    "侵略!_イカ娘",
+    "侵略！イカ娘",
+    "俺の妹がこんなに可愛いわけがない",
+    "俺の妹がこんなに可愛いわけがない。",
+    "俺の彼女と幼なじみが修羅場すぎる",
+    "俺を好きなのはお前だけかよ",
+    "偽物語",
+    "傷物語",
+    "八月のシンデレラナイン",
+    "冴えない彼女の育てかた",
+    "刀語",
+    "初音ミク",
+    "劇場版 あの日見た花の名前を僕達はまだ知らない。",
+    "劇場版 ダンジョンに出会いを求めるのは間違っているだろうか ―オリオンの矢―",
+    "劇場版 ハイスクール・フリート",
+    "劇場版 魔法少女まどか☆マギカ",
+    "劇場版 魔法少女まどか☆マギカ[新編]叛逆の物語",
+    "劇場版 魔法科高校の劣等生 星を呼ぶ少女",
+    "劇場版「SHIROBAKO」",
+    "劇場版「きんいろモザイクThank you!!」",
+    "化物語",
+    "咲-Saki- 全国編",
+    "夏色キセキ",
+    "学戦都市アスタリスク",
+    "怪獣娘（黒）",
+    "恋と選挙とチョコレート",
+    "恋愛ラボ",
+    "映画「けいおん！」",
+    "生徒会の一存 Lv.2",
+    "百花繚乱 サムライガールズ",
+    "百花繚乱 サムライブライド",
+    "神様のメモ帳",
+    "私、能力は平均値でって言ったよね！",
+    "結城友奈は勇者である",
+    "結城友奈は勇者である -鷲尾須美の章-_-勇者の章-",
+    "電波女と青春男",
+    "魔法使いの夜",
+    "魔法少女まどか☆マギカ",
+    "魔法科高校の劣等生 来訪者編"
+];
+
+const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';   // 依你實際資料夾圖示路徑修改
+const GALLERY_BASE = '官方卡圖';             // 卡圖的根目錄，依你實際結構修改
+
+
+
 const cardUIImages = {
     red_character_num: "img/紅色有數字.png",
     red_character_nonum: "img/紅色沒數字.png",
@@ -66,7 +185,6 @@ function initTagButtons() {
             }
             let currentVal = cardEffectInput.value;
 
-            // 判斷要插入的是圖片還是文字
             const insertContent = imgSrc 
                 ? `<img src="${imgSrc}" class="inline-effect-icon">` 
                 : text;
@@ -373,6 +491,82 @@ async function downloadCard() {
     }
 }
 
+function renderGallerySeriesList() {
+    const list = document.getElementById('gallerySeriesList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    gallerySeries.forEach(seriesName => {
+        const folder = document.createElement('div');
+        folder.className = 'series-folder';
+
+        const img = document.createElement('img');
+        img.src = FOLDER_ICON;
+        img.alt = seriesName;
+        folder.appendChild(img);
+
+        const name = document.createElement('div');
+        name.className = 'folder-name';
+        name.textContent = seriesName;
+        folder.appendChild(name);
+
+        folder.addEventListener('click', () => openSeries(seriesName));
+
+        list.appendChild(folder);
+    });
+}
+
+function openSeries(seriesName) {
+    const seriesView = document.getElementById('gallerySeriesView');
+    const cardsView = document.getElementById('galleryCardsView');
+    const title = document.getElementById('galleryCardsTitle');
+    const list = document.getElementById('galleryCardsList');
+
+    title.textContent = seriesName;
+    list.innerHTML = '';
+
+    const files = (typeof galleryCards !== 'undefined' && galleryCards[seriesName]) ? galleryCards[seriesName] : [];
+
+    files.forEach(fileName => {
+        const card = document.createElement('div');
+        card.className = 'gallery-card';
+
+        const img = document.createElement('img');
+        img.src = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/' + encodeURIComponent(fileName);
+        img.alt = fileName;
+        img.loading = 'lazy';
+        card.appendChild(img);
+
+        const cap = document.createElement('div');
+        cap.className = 'card-caption';
+        cap.textContent = fileName;
+        card.appendChild(cap);
+
+        list.appendChild(card);
+    });
+
+    seriesView.style.display = 'none';
+    cardsView.style.display = 'block';
+
+    const toggleBtn = document.getElementById('gotoGalleryBtn');
+    toggleBtn.textContent = '回上一頁';
+    toggleBtn.dataset.mode = 'backToSeries';
+    window.scrollTo(0, 0);
+}
+
+function backToSeriesList() {
+    const seriesView = document.getElementById('gallerySeriesView');
+    const cardsView = document.getElementById('galleryCardsView');
+
+    cardsView.style.display = 'none';
+    seriesView.style.display = 'block';
+
+    const toggleBtn = document.getElementById('gotoGalleryBtn');
+    toggleBtn.textContent = '卡片自製器';
+    toggleBtn.dataset.mode = '';
+    window.scrollTo(0, 0);
+}
+
 function init() {
     cardColorInput.addEventListener('change', updatePreview);
     cardTypeInput.addEventListener('change', () => {
@@ -403,6 +597,8 @@ function init() {
     renderKeywords();
     handleNumberState();
     updatePreview();
+    initPageNavigation();
+    renderGallerySeriesList();
 }
 
 function handleNumberState() {
@@ -686,7 +882,6 @@ function updatePreview() {
     fitEffectText(prevEffect);
     fitNameText(prevName, selectedType);
 
-    // ✅ 正確放到 updatePreview 內部：切換半透明時動態顯示/隱藏白色背景底塊
     const targetEffectBg = document.getElementById('effectBg');
     const targetTransparentCb = document.getElementById('transparentEffectCb');
     
@@ -697,6 +892,38 @@ function updatePreview() {
             targetEffectBg.style.display = 'block';
         }
     }
+}
+/*分頁切換 */
+function initPageNavigation() {
+    const toggleBtn = document.getElementById('gotoGalleryBtn');
+    const pageEditor = document.getElementById('pageEditor');
+    const pageGallery = document.getElementById('pageGallery');
+
+    if (!toggleBtn || !pageEditor || !pageGallery) return;
+
+    toggleBtn.addEventListener('click', () => {
+        // 若目前是「系列內卡圖」模式 → 回系列列表
+        if (toggleBtn.dataset.mode === 'backToSeries') {
+            backToSeriesList();
+            return;
+        }
+
+        const isGalleryVisible = pageGallery.classList.contains('active');
+
+        if (isGalleryVisible) {
+            // 官方卡表 → 自製器
+            pageGallery.classList.remove('active');
+            pageEditor.style.display = '';
+            toggleBtn.textContent = '官方卡表';
+            toggleBtn.dataset.mode = '';
+        } else {
+            // 自製器 → 官方卡表（回到系列列表）
+            pageEditor.style.display = 'none';
+            pageGallery.classList.add('active');
+            backToSeriesList();
+        }
+        window.scrollTo(0, 0);
+    });
 }
 
 init();
