@@ -226,8 +226,8 @@ const gallerySeriesByDate = [
     "ClariS"
 ];
 
-const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';   // 依你實際資料夾圖示路徑修改
-const GALLERY_BASE = '官方卡圖';             // 卡圖的根目錄，依你實際結構修改
+const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';
+const GALLERY_BASE = '官方卡圖';
 
 const cardUIImages = {
     red_character_num: "img/紅色有數字.png",
@@ -916,12 +916,11 @@ function handleKeywordChange(e) {
     updatePreview();
 }
 
-// 自動微調效果欄字體大小，避免超出效果框
 function fitEffectText(el) {
     if (!el) return;
     
-    let fontSize = 9.5; // 效果欄預設最大字體 (px)
-    const minFontSize = 3.5; // 最小縮放限制 (px)
+    let fontSize = 9.5;
+    const minFontSize = 3.5;
     el.style.fontSize = `${fontSize}px`;
 
     while (
@@ -933,22 +932,19 @@ function fitEffectText(el) {
     }
 }
 
-// 自動微調卡片名稱字體大小，避免超出卡名欄寬度/高度
 function fitNameText(el, selectedType) {
     if (!el) return;
     
-    let fontSize = (selectedType === 'event') ? 13 : 15; // 事件卡直書預設 13px，其餘 15px
-    const minFontSize = 7; // 卡名最小縮放限制 (px)
+    let fontSize = (selectedType === 'event') ? 13 : 15;
+    const minFontSize = 7; 
     el.style.fontSize = `${fontSize}px`;
 
     if (selectedType === 'event') {
-        // 事件卡（直書模式）：超出高度時縮小
         while (el.scrollHeight > el.clientHeight && fontSize > minFontSize) {
             fontSize -= 0.5;
             el.style.fontSize = `${fontSize}px`;
         }
     } else {
-        // 一般卡片（橫書模式）：超出寬度時縮小
         while (el.scrollWidth > el.clientWidth && fontSize > minFontSize) {
             fontSize -= 0.5;
             el.style.fontSize = `${fontSize}px`;
@@ -1088,7 +1084,6 @@ function initPageNavigation() {
     if (!toggleBtn || !pageEditor || !pageGallery) return;
 
     toggleBtn.addEventListener('click', () => {
-        // 若目前是「系列內卡圖」模式 → 回系列列表
         if (toggleBtn.dataset.mode === 'backToSeries') {
             backToSeriesList();
             return;
@@ -1097,13 +1092,11 @@ function initPageNavigation() {
         const isGalleryVisible = pageGallery.classList.contains('active');
 
         if (isGalleryVisible) {
-            // 官方卡表 → 自製器
             pageGallery.classList.remove('active');
             pageEditor.style.display = '';
             toggleBtn.textContent = '官方卡表';
             toggleBtn.dataset.mode = '';
         } else {
-            // 自製器 → 官方卡表（回到系列列表）
             pageEditor.style.display = 'none';
             pageGallery.classList.add('active');
             backToSeriesList();
