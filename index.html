@@ -170,6 +170,70 @@
     </div>
     <!-- pageGallery 結尾 -->
 
+    <!-- 卡片詳情 Modal -->
+    <div id="cardModal" class="card-modal">
+        <div class="card-modal-backdrop"></div>
+        <div class="card-modal-content">
+            <button type="button" class="card-modal-close" id="cardModalClose">✕</button>
+            <div class="card-modal-body">
+                <!-- 左側：卡圖 -->
+                <div class="card-modal-image">
+                    <img id="modalCardImg" src="" alt="Card">
+                </div>
+                <!-- 右側：資訊 -->
+                <div class="card-modal-info">
+                    <div class="modal-row modal-row-top">
+                        <div class="modal-box">
+                            <span class="modal-label">稀有度</span>
+                            <span id="modalRarity" class="modal-value"></span>
+                        </div>
+                        <div class="modal-box">
+                            <span class="modal-label">卡號</span>
+                            <span id="modalNumber" class="modal-value"></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-box modal-box-full">
+                        <span class="modal-label">卡名</span>
+                        <span id="modalName" class="modal-value"></span>
+                    </div>
+
+                    <div class="modal-box modal-box-full">
+                        <span class="modal-label">特徵</span>
+                        <span id="modalFeature" class="modal-value"></span>
+                    </div>
+
+                    <div class="modal-row">
+                        <div class="modal-box">
+                            <span class="modal-label">Cost</span>
+                            <span id="modalCost" class="modal-value"></span>
+                        </div>
+                        <div class="modal-box">
+                            <span class="modal-label">AP</span>
+                            <span id="modalAP" class="modal-value"></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-row">
+                        <div class="modal-box">
+                            <span class="modal-label">Source</span>
+                            <span id="modalSource" class="modal-value"></span>
+                        </div>
+                        <div class="modal-box">
+                            <span class="modal-label">DP</span>
+                            <span id="modalDP" class="modal-value"></span>
+                        </div>
+                    </div>
+
+                    <div class="modal-box modal-box-full modal-box-effect">
+                        <span class="modal-label">效果文</span>
+                        <div id="modalEffect" class="modal-value modal-effect-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="js.js"></script>
 </body>
 </html>

@@ -666,8 +666,134 @@
         .sort-btn.active {
             color: #ff8c00;
         }
-
         /*  卡表css尾*/
+
+        /* 卡片詳情 Modal */
+        .card-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+        }
+
+        .card-modal.open {
+            display: block;
+        }
+
+        .card-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .card-modal-content {
+            position: relative;
+            background: #fff;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            margin: 5vh auto;
+            border-radius: 10px;
+            padding: 24px;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: transparent;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .card-modal-close:hover {
+            color: #000;
+        }
+
+        .card-modal-body {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .card-modal-image {
+            flex: 0 0 260px;
+        }
+
+        .card-modal-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 6px;
+        }
+
+        .card-modal-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-box {
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 6px 10px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 36px;
+        }
+
+        .modal-box-full {
+            width: 100%;
+        }
+
+        .modal-label {
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .modal-value {
+            font-size: 14px;
+            color: #111;
+            word-break: break-all;
+        }
+
+        .modal-box-effect {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .modal-effect-text {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        /* 手機版：上下排列 */
+        @media (max-width: 700px) {
+            .card-modal-body {
+                flex-direction: column;
+            }
+            .card-modal-image {
+                flex: none;
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+        }
 
         .btn-upload { background-color: #4da6ff; color: white; }
         .btn-upload:hover { background-color: #3385d6; }

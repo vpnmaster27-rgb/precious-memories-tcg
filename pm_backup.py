@@ -5,25 +5,13 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-# ============================================================
-# ★★★ 只需要改這三個地方 ★★★
-# ============================================================
-
-# 1️⃣ 總列表頁網址（你要從哪一頁抓出所有系列連結）
 LIST_URL = "http://www.p-memories.com/card_product_list_page"
 
-# 2️⃣ 總列表頁中，包住所有系列連結的那個 <ul> 的 selector
-#    例如 id="foo" 就寫 "#foo"；class="bar" 就寫 ".bar"
-#    若不知道，可先印出所有 <ul> 的 id/class 來找
-UL_SELECTOR = "ul.productlist"   # ← 改成你實際的那個 ul
+UL_SELECTOR = "ul.productlist"
 
-# 3️⃣ 圖片要存到哪個母資料夾（每個系列會在其中建立子資料夾）
-SAVE_ROOT = "爬蟲(未分類)"
+SAVE_ROOT = "效果"
 
-# 圖片網址的來源網站（通常不用改）
 BASE_URL = "http://www.p-memories.com"
-
-# ============================================================
 
 HEADERS = {
     "User-Agent": (
@@ -34,43 +22,11 @@ HEADERS = {
 }
 
 
-def sanitize_folder_name(name):
-    """清掉 Windows 不允許的資料夾字元"""
+def sanitize_filename(name):
+    """清掉 Windows 不允許的檔名字元"""
     for ch in '\\/:*?"<>|':
         name = name.replace(ch, "_")
     return name.strip() or "untitled"
-
-
-def download_image(img_url, folder_path):
-    """下載單張圖片，回傳 True/False"""
-    filename = os.path.basename(img_url.split("?")[0])
-    file_path = os.path.join(folder_path, filename)
-
-    if os.path.exists(file_path):
-        print(f"  ⏭️  已存在，跳過：{filename}")
-        return False
-
-    try:
-        res = requests.get(img_url, headers=HEADERS, timeout=10)
-        if res.status_code == 200:
-            with open(file_path, "wb") as f:
-                f.write(res.content)
-            return True
-        else:
-            print(f"  ❌ HTTP {res.status_code} - {img_url}")
-    except Exception as e:
-        print(f"  ❌ 下載失敗 ({filename}): {e}")
-    return False
-
-
-def is_card_preview(tag):
-    """判斷 <a> 的 class 是否以 cardPreview 開頭"""
-    classes = tag.get("class")
-    if not classes:
-        return False
-    if isinstance(classes, str):
-        classes = [classes]
-    return any(cls.startswith("cardPreview") for cls in classes)
 
 
 def get_series_links(list_url, ul_selector):
@@ -114,9 +70,13 @@ def get_series_links(list_url, ul_selector):
     return series
 
 
-def crawl_series(series_name, series_url):
-    """進入單一系列頁，下載所有 cardPreview 圖片到以系列名命名的資料夾"""
-    folder_name = sanitize_folder_name(series_name)
+def crawl_series_text(series_name, series_url):
+    """
+    進入單一系列頁，對每一列 <tr> 產生兩個檔案：
+    1. {卡號}-{卡名}.txt   → 內容是テキスト（最右邊的 <td>）
+    2. {卡號}-info.txt     → 內容是其他所有 <td>，用空格分隔
+    """
+    folder_name = sanitize_filename(series_name)
     folder_path = os.path.join(SAVE_ROOT, folder_name)
     os.makedirs(folder_path, exist_ok=True)
 
@@ -134,34 +94,57 @@ def crawl_series(series_name, series_url):
         return
 
     soup = BeautifulSoup(res.text, "lxml")
-    previews = [a for a in soup.find_all("a") if is_card_preview(a)]
-    print(f"   🎯 找到 {len(previews)} 個 cardPreview")
 
-    if not previews:
-        print("   ⚠️ 找不到 cardPreview，這一頁可能是 JS 動態產生。")
-        return
+    trs = soup.find_all("tr")
+    saved = 0
 
-    success = 0
-    seen_src = set()
-
-    for i, a in enumerate(previews, 1):
-        src = a.get("src")
-        if not src:
+    for tr in trs:
+        tds = tr.find_all("td")
+        if not tds:
             continue
 
-        full_url = urljoin(BASE_URL, src)
+        # 最右邊的 <td>（テキスト）
+        last_text = tds[-1].get_text(strip=True)
 
-        if full_url in seen_src:
+        # 至少要有 6 欄才足以取到卡號與卡名
+        if len(tds) < 6:
             continue
-        seen_src.add(full_url)
 
-        print(f"   [{i}/{len(previews)}] {full_url}")
-        if download_image(full_url, folder_path):
-            success += 1
+        card_no = tds[1].get_text(strip=True)    # 卡號
+        card_name = tds[5].get_text(strip=True)  # 卡名
 
-        time.sleep(random.uniform(0.1, 0.3))
+        if not card_no:
+            continue
 
-    print(f"   ✅ [{folder_name}] 本次成功下載 {success} 張\n")
+        # ---------- 檔案 1：卡號-卡名.txt（內容＝テキスト） ----------
+        stem1 = f"{card_no}-{card_name}" if card_name else card_no
+        safe1 = sanitize_filename(stem1)
+        path1 = os.path.join(folder_path, f"{safe1}.txt")
+        with open(path1, "w", encoding="utf-8") as f:
+            f.write(last_text)
+
+        # ---------- 檔案 2：卡號-info.txt（內容＝其他所有 td，用空格分隔） ----------
+        info_parts = []
+        for i, td in enumerate(tds):
+            if i == len(tds) - 1:   # 跳過最右邊的テキスト
+                continue
+            text = td.get_text(strip=True)
+            info_parts.append(text if text else "-")   # 空的用 "-" 佔位
+
+        info_content = " ".join(info_parts)
+
+        stem2 = f"{card_no}-info"
+        safe2 = sanitize_filename(stem2)
+        path2 = os.path.join(folder_path, f"{safe2}.txt")
+        with open(path2, "w", encoding="utf-8") as f:
+            f.write(info_content)
+
+        saved += 1
+
+    if saved == 0:
+        print("   ⚠️ 沒有抓到任何 <td> 文字，這一頁可能是 JS 動態產生。")
+    else:
+        print(f"   📝 已寫入 {saved * 2} 個 txt 檔（{saved} 張卡 × 2） → {folder_path}\n")
 
 
 def main():
@@ -174,7 +157,7 @@ def main():
 
     for idx, (name, url) in enumerate(series_list, 1):
         print(f"▓▒░ ({idx}/{len(series_list)}) 系列：{name}")
-        crawl_series(name, url)
+        crawl_series_text(name, url)
 
     print("🎉 全部完成！")
 

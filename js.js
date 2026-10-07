@@ -228,6 +228,7 @@ const gallerySeriesByDate = [
 
 const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';
 const GALLERY_BASE = '官方卡圖';
+const EFFECT_BASE = '效果';
 
 const cardUIImages = {
     red_character_num: "img/紅色有數字.png",
@@ -696,6 +697,53 @@ async function loadSeriesCards(seriesName) {
     }
 }
 
+async function getCardInfo(seriesName, fileName) {
+    const baseName = fileName.replace(/\.[^.]+$/, '');
+    const cardId = baseName.split('_').pop();
+
+    const infoUrl = `${EFFECT_BASE}/${encodeURIComponent(seriesName)}/${encodeURIComponent(cardId)}-info.txt`;
+
+    let rarity = '', number = cardId, cost = '', source = '', type = '', name = '', color = '', feature = '', ap = '', dp = '';
+    let effect = '';
+
+    try {
+        const res = await fetch(infoUrl);
+        if (res.ok) {
+            const text = (await res.text()).trim();
+            const parts = text.split(/\s+/);
+
+            rarity  = parts[0] || '';
+            number  = parts[1] || '';
+            cost    = parts[2] || '';
+            source  = parts[3] || '';
+            type    = parts[4] || '';
+
+            dp      = parts[parts.length - 1] || '';
+            ap      = parts[parts.length - 2] || '';
+            feature = parts[parts.length - 3] || '';
+            color   = parts[parts.length - 4] || '';
+
+            name = parts.slice(5, parts.length - 4).join(' ');
+        }
+    } catch (err) {
+        console.warn('讀取 info.txt 失敗：', err);
+    }
+
+    if (name) {
+        const effectUrl = `${EFFECT_BASE}/${encodeURIComponent(seriesName)}/${encodeURIComponent(cardId + '-' + name)}.txt`;
+        try {
+            const res2 = await fetch(effectUrl);
+            if (res2.ok) {
+                effect = (await res2.text()).trim();
+            }
+        } catch (err) {
+            console.warn('讀取效果文失敗：', err);
+        }
+    }
+
+    return { rarity, number, cost, source, type, name, color, feature, ap, dp, effect };
+}
+
 async function openSeries(seriesName) {
     const seriesView = document.getElementById('gallerySeriesView');
     const cardsView = document.getElementById('galleryCardsView');
@@ -722,12 +770,15 @@ async function openSeries(seriesName) {
         return;
     }
 
-    files.forEach(fileName => {
+        files.forEach(fileName => {
         const card = document.createElement('div');
         card.className = 'gallery-card';
+        card.style.cursor = 'pointer';
+
+        const imgSrc = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/' + encodeURIComponent(fileName);
 
         const img = document.createElement('img');
-        img.src = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/' + encodeURIComponent(fileName);
+        img.src = imgSrc;
         img.alt = fileName;
         img.loading = 'lazy';
         card.appendChild(img);
@@ -736,6 +787,22 @@ async function openSeries(seriesName) {
         cap.className = 'card-caption';
         cap.textContent = fileName;
         card.appendChild(cap);
+
+        card.addEventListener('click', async () => {
+            const info = await getCardInfo(seriesName, fileName);
+            openCardModal({
+                imgSrc: imgSrc,
+                rarity: info.rarity,
+                number: info.number,
+                name: info.name,
+                feature: info.feature,
+                cost: info.cost,
+                ap: info.ap,
+                source: info.source,
+                dp: info.dp,
+                effect: info.effect
+            });
+        });
 
         list.appendChild(card);
     });
@@ -787,6 +854,8 @@ function init() {
     initPageNavigation();
     initGallerySortButtons();
     renderGallerySeriesList();
+    initCardModal();
+
 }
 
 function handleNumberState() {
@@ -1075,6 +1144,51 @@ function updatePreview() {
         }
     }
 }
+
+// ===== 卡片詳情 Modal =====
+const cardModal = document.getElementById('cardModal');
+const cardModalClose = document.getElementById('cardModalClose');
+const modalCardImg = document.getElementById('modalCardImg');
+const modalRarity = document.getElementById('modalRarity');
+const modalNumber = document.getElementById('modalNumber');
+const modalName = document.getElementById('modalName');
+const modalFeature = document.getElementById('modalFeature');
+const modalCost = document.getElementById('modalCost');
+const modalAP = document.getElementById('modalAP');
+const modalSource = document.getElementById('modalSource');
+const modalDP = document.getElementById('modalDP');
+const modalEffect = document.getElementById('modalEffect');
+
+function openCardModal(data) {
+    if (!cardModal) return;
+    modalCardImg.src = data.imgSrc || '';
+    modalRarity.textContent = data.rarity || '';
+    modalNumber.textContent = data.number || '';
+    modalName.textContent = data.name || '';
+    modalFeature.textContent = data.feature || '';
+    modalCost.textContent = data.cost || '';
+    modalAP.textContent = data.ap || '';
+    modalSource.textContent = data.source || '';
+    modalDP.textContent = data.dp || '';
+    modalEffect.textContent = data.effect || '';
+    cardModal.classList.add('open');
+}
+
+function closeCardModal() {
+    if (!cardModal) return;
+    cardModal.classList.remove('open');
+}
+
+function initCardModal() {
+    if (!cardModal) return;
+    cardModalClose.addEventListener('click', closeCardModal);
+    const backdrop = cardModal.querySelector('.card-modal-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeCardModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeCardModal();
+    });
+}
+
 /*分頁切換 */
 function initPageNavigation() {
     const toggleBtn = document.getElementById('gotoGalleryBtn');
