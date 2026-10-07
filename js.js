@@ -672,6 +672,10 @@ function renderGallerySeriesList() {
 
 const galleryCardsCache = {};
 
+let currentGallerySeriesName = '';
+let currentGalleryFiles = [];
+let currentGalleryIndex = -1;
+
 async function loadSeriesCards(seriesName) {
     if (galleryCardsCache[seriesName]) {
         return galleryCardsCache[seriesName];
@@ -763,6 +767,10 @@ async function openSeries(seriesName) {
 
     const files = await loadSeriesCards(seriesName);
 
+    currentGallerySeriesName = seriesName;
+    currentGalleryFiles = files;
+    currentGalleryIndex = -1;
+
     list.innerHTML = '';
 
     if (files.length === 0) {
@@ -770,7 +778,7 @@ async function openSeries(seriesName) {
         return;
     }
 
-        files.forEach(fileName => {
+        files.forEach((fileName, index) => {
         const card = document.createElement('div');
         card.className = 'gallery-card';
         card.style.cursor = 'pointer';
@@ -788,20 +796,9 @@ async function openSeries(seriesName) {
         cap.textContent = fileName;
         card.appendChild(cap);
 
-        card.addEventListener('click', async () => {
-            const info = await getCardInfo(seriesName, fileName);
-            openCardModal({
-                imgSrc: imgSrc,
-                rarity: info.rarity,
-                number: info.number,
-                name: info.name,
-                feature: info.feature,
-                cost: info.cost,
-                ap: info.ap,
-                source: info.source,
-                dp: info.dp,
-                effect: info.effect
-            });
+        card.addEventListener('click', () => {
+            currentGalleryIndex = index;
+            showCardAt(index);
         });
 
         list.appendChild(card);
@@ -1174,6 +1171,58 @@ function openCardModal(data) {
     cardModal.classList.add('open');
 }
 
+async function showCardAt(index) {
+    if (index < 0 || index >= currentGalleryFiles.length) return;
+
+    const seriesName = currentGallerySeriesName;
+    const fileName = currentGalleryFiles[index];
+    const imgSrc = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/' + encodeURIComponent(fileName);
+
+    const info = await getCardInfo(seriesName, fileName);
+
+    openCardModal({
+        imgSrc: imgSrc,
+        rarity: info.rarity,
+        number: info.number,
+        name: info.name,
+        feature: info.feature,
+        cost: info.cost,
+        ap: info.ap,
+        source: info.source,
+        dp: info.dp,
+        effect: info.effect
+    });
+
+    currentGalleryIndex = index;
+    updateModalNavButtons();
+}
+
+async function navigateCard(direction) {
+    const newIndex = currentGalleryIndex + direction;
+    if (newIndex < 0 || newIndex >= currentGalleryFiles.length) return;
+
+    const body = cardModal.querySelector('.card-modal-body');
+    if (!body) {
+        showCardAt(newIndex);
+        return;
+    }
+
+    body.classList.add('fading');
+    await new Promise(r => setTimeout(r, 250));
+
+    await showCardAt(newIndex);
+
+    body.classList.remove('fading');
+}
+
+function updateModalNavButtons() {
+    const prevBtn = document.getElementById('modalPrevBtn');
+    const nextBtn = document.getElementById('modalNextBtn');
+    if (!prevBtn || !nextBtn) return;
+    prevBtn.disabled = currentGalleryIndex <= 0;
+    nextBtn.disabled = currentGalleryIndex >= currentGalleryFiles.length - 1;
+}
+
 function closeCardModal() {
     if (!cardModal) return;
     cardModal.classList.remove('open');
@@ -1181,15 +1230,89 @@ function closeCardModal() {
 
 function initCardModal() {
     if (!cardModal) return;
+
     cardModalClose.addEventListener('click', closeCardModal);
+
     const backdrop = cardModal.querySelector('.card-modal-backdrop');
     if (backdrop) backdrop.addEventListener('click', closeCardModal);
+
+    const prevBtn = document.getElementById('modalPrevBtn');
+    const nextBtn = document.getElementById('modalNextBtn');
+    if (prevBtn) prevBtn.addEventListener('click', () => navigateCard(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => navigateCard(1));
+
     document.addEventListener('keydown', (e) => {
+        if (!cardModal.classList.contains('open')) return;
         if (e.key === 'Escape') closeCardModal();
+        if (e.key === 'ArrowLeft') navigateCard(-1);
+        if (e.key === 'ArrowRight') navigateCard(1);
+    })
+
+async function navigateCard(direction) {
+    const newIndex = currentGalleryIndex + direction;
+    if (newIndex < 0 || newIndex >= currentGalleryFiles.length) return;
+
+    const body = cardModal.querySelector('.card-modal-body');
+    if (!body) {
+        showCardAt(newIndex);
+        return;
+    }
+
+    body.classList.add('fading');
+    await new Promise(r => setTimeout(r, 250));
+
+    await showCardAt(newIndex);
+
+    body.classList.remove('fading');
+}
+
+function updateModalNavButtons() {
+    const prevBtn = document.getElementById('modalPrevBtn');
+    const nextBtn = document.getElementById('modalNextBtn');
+    if (!prevBtn || !nextBtn) return;
+    prevBtn.disabled = currentGalleryIndex <= 0;
+    nextBtn.disabled = currentGalleryIndex >= currentGalleryFiles.length - 1;
+}
+    if (!cardModal) return;
+    modalCardImg.src = data.imgSrc || '';
+    modalRarity.textContent = data.rarity || '';
+    modalNumber.textContent = data.number || '';
+    modalName.textContent = data.name || '';
+    modalFeature.textContent = data.feature || '';
+    modalCost.textContent = data.cost || '';
+    modalAP.textContent = data.ap || '';
+    modalSource.textContent = data.source || '';
+    modalDP.textContent = data.dp || '';
+    modalEffect.textContent = data.effect || '';
+    cardModal.classList.add('open');
+}
+
+function closeCardModal() {
+    if (!cardModal) return;
+    cardModal.classList.remove('open');
+}
+
+function initCardModal() {
+    if (!cardModal) return;
+
+    cardModalClose.addEventListener('click', closeCardModal);
+
+    const backdrop = cardModal.querySelector('.card-modal-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeCardModal);
+
+    const prevBtn = document.getElementById('modalPrevBtn');
+    const nextBtn = document.getElementById('modalNextBtn');
+    if (prevBtn) prevBtn.addEventListener('click', () => navigateCard(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => navigateCard(1));
+
+    document.addEventListener('keydown', (e) => {
+        if (!cardModal.classList.contains('open')) return;
+        if (e.key === 'Escape') closeCardModal();
+        if (e.key === 'ArrowLeft') navigateCard(-1);
+        if (e.key === 'ArrowRight') navigateCard(1);
     });
 }
 
-/*分頁切換 */
 function initPageNavigation() {
     const toggleBtn = document.getElementById('gotoGalleryBtn');
     const pageEditor = document.getElementById('pageEditor');

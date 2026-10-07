@@ -782,6 +782,68 @@
             margin-top: 4px;
         }
 
+        /* 左右箭頭 */
+        .card-modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            font-size: 28px;
+            color: #333;
+            cursor: pointer;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            user-select: none;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .card-modal-nav:hover:not(:disabled) {
+            background: #4da6ff;
+            color: #fff;
+        }
+
+        .card-modal-nav:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        .card-modal-prev {
+            left: -22px;
+        }
+
+        .card-modal-next {
+            right: -22px;
+        }
+
+        /* 內容轉場（半秒） */
+        .card-modal-body {
+            transition: opacity 0.25s ease;
+        }
+
+        .card-modal-body.fading {
+            opacity: 0;
+        }
+
+        /* 手機版箭頭縮小並內縮 */
+        @media (max-width: 700px) {
+            .card-modal-nav {
+                width: 36px;
+                height: 36px;
+                font-size: 22px;
+            }
+            .card-modal-prev { left: 4px; }
+            .card-modal-next { right: 4px; }
+        }
+
         /* 手機版：上下排列 */
         @media (max-width: 700px) {
             .card-modal-body {
