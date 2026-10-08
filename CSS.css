@@ -691,13 +691,14 @@
             position: relative;
             background: #fff;
             max-width: 900px;
-            width: 90%;
-            max-height: 90vh;
+            width: 100%;
+            max-height: 200vh;
             margin: 5vh auto;
             border-radius: 10px;
-            padding: 24px;
+            padding: 24px 60px;
             overflow-y: auto;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            min-height: 50vh;
         }
 
         .card-modal-close {
@@ -794,22 +795,14 @@
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.9);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-            font-size: 28px;
-            color: #333;
             cursor: pointer;
             z-index: 5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 0;
-            line-height: 1;
-            user-select: none;
-            transition: background 0.15s, color 0.15s;
+            transition: background 0.15s;
         }
 
         .card-modal-nav:hover:not(:disabled) {
             background: #4da6ff;
-            color: #fff;
         }
 
         .card-modal-nav:disabled {
@@ -817,12 +810,40 @@
             cursor: not-allowed;
         }
 
+        /* 用邊框畫箭頭 */
+        .card-modal-nav::before {
+            content: "";
+            display: block;
+            width: 12px;
+            height: 12px;
+            border-top: 3px solid #333;
+            border-right: 3px solid #333;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+}
+
+        /* 左箭頭：旋轉 225 度，並往左微調 */
+        .card-modal-prev::before {
+            transform: translate(-35%, -50%) rotate(-135deg);
+        }
+
+        /* 右箭頭：旋轉 45 度，並往右微調 */
+        .card-modal-next::before {
+            transform: translate(-65%, -50%) rotate(45deg);
+        }
+
+        /* hover 時箭頭變白 */
+        .card-modal-nav:hover:not(:disabled)::before {
+            border-color: #fff;
+        }
+
         .card-modal-prev {
-            left: -22px;
+            left: 8px;
         }
 
         .card-modal-next {
-            right: -22px;
+            right: 8px;
         }
 
         /* 內容轉場（半秒） */

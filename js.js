@@ -1150,6 +1150,7 @@ const modalRarity = document.getElementById('modalRarity');
 const modalNumber = document.getElementById('modalNumber');
 const modalName = document.getElementById('modalName');
 const modalFeature = document.getElementById('modalFeature');
+const modalColor = document.getElementById('modalColor');
 const modalCost = document.getElementById('modalCost');
 const modalAP = document.getElementById('modalAP');
 const modalSource = document.getElementById('modalSource');
@@ -1163,6 +1164,7 @@ function openCardModal(data) {
     modalNumber.textContent = data.number || '';
     modalName.textContent = data.name || '';
     modalFeature.textContent = data.feature || '';
+    modalColor.textContent = data.color || '';
     modalCost.textContent = data.cost || '';
     modalAP.textContent = data.ap || '';
     modalSource.textContent = data.source || '';
@@ -1181,6 +1183,7 @@ async function showCardAt(index) {
     const info = await getCardInfo(seriesName, fileName);
 
     openCardModal({
+        color: info.color,
         imgSrc: imgSrc,
         rarity: info.rarity,
         number: info.number,
