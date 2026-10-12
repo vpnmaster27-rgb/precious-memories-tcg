@@ -47,7 +47,12 @@
             color: #333;
         }
 
-        /* 數字動態圖片按鈕計數器容器 */
+        .text-kw-input {
+            width: 40px;
+            padding: 2px 4px;
+            font-size: 12px;
+        }
+
         .number-img-stepper {
             display: inline-flex;
             flex-direction: column;
@@ -692,8 +697,9 @@
             background: #fff;
             max-width: 900px;
             width: 100%;
-            max-height: 200vh;
+            max-height: 90vh;
             margin: 5vh auto;
+            -webkit-overflow-scrolling: touch;
             border-radius: 10px;
             padding: 24px 60px;
             overflow-y: auto;
@@ -866,16 +872,61 @@
             .card-modal-next { right: 4px; }
         }
 
-        /* 手機版：上下排列 */
         @media (max-width: 700px) {
+            .card-modal-content {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                border-radius: 0;
+                padding: 44px 12px 16px; 
+                height: 100vh;
+                max-height: 100vh;
+                min-height: auto;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-y;
+            }
+
             .card-modal-body {
                 flex-direction: column;
+                gap: 14px;
             }
+
             .card-modal-image {
                 flex: none;
                 width: 100%;
-                max-width: 300px;
+                max-width: 280px;
                 margin: 0 auto;
+            }
+
+            .card-modal-info {
+                width: 100%;
+            }
+
+            .modal-box {
+                min-width: 0;
+            }
+
+            .card-modal-nav {
+                width: 36px;
+                height: 36px;
+            }
+            .card-modal-prev { left: 4px; }
+            .card-modal-next { right: 4px; }
+
+            .card-modal-close {
+                position: fixed;
+                top: 8px;
+                right: 10px;
+                width: 36px;
+                height: 36px;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 50%;
+                z-index: 100;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
             }
         }
 

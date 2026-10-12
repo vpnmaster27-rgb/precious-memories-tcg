@@ -268,11 +268,15 @@ const allKeywords = [
     { id: 'toppa', name: '突破', hasNumber: true, defaultVal: 30, group: null },
     { id: 'tennen', name: '天然', hasNumber: true, defaultVal: 0, group: null },
     { id: 'free', name: '自由登場', hasNumber: false, group: null },
+    { id: 'renkei', name: '連携：「」', hasText: true, group: null, customText: '〔連携：「」〕', placeholder: '角色名' },
+    { id: 'keisho', name: '継承▶「」', hasText: true, group: null, customText: '〔継承〕▶「」', placeholder: '角色名' },
+    { id: 'chiryaku', name: '知略▶「」', hasText: true, group: null, customText: '〔知略▶「」〕' },
+    { id: 'ccsakura', name: 'カードキャプター', hasNumber: false, group: null },
 ];
 
 const allowedKeywordsByType = {
-    character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'toppa', 'combi','free'],
-    character_nonum: [ 'ex', 'combi','free'],
+    character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'toppa', 'combi','free', 'renkei', 'keisho', 'chiryaku', 'ccsakura'],
+    character_nonum: [ 'ex', 'combi','free', 'chiryaku'],
     event: ['ex', 'break'],
     support: ['ex']
 };
@@ -710,24 +714,42 @@ async function getCardInfo(seriesName, fileName) {
     let rarity = '', number = cardId, cost = '', source = '', type = '', name = '', color = '', feature = '', ap = '', dp = '';
     let effect = '';
 
+    const COLORS = ['赤', '青', '黄', '緑', '紫', '白', '黒'];
+
     try {
         const res = await fetch(infoUrl);
         if (res.ok) {
             const text = (await res.text()).trim();
             const parts = text.split(/\s+/);
 
-            rarity  = parts[0] || '';
-            number  = parts[1] || '';
-            cost    = parts[2] || '';
-            source  = parts[3] || '';
-            type    = parts[4] || '';
+            rarity = parts[0] || '';
+            number = parts[1] || '';
+            cost   = parts[2] || '';
+            source = parts[3] || '';
+            type   = parts[4] || '';
 
-            dp      = parts[parts.length - 1] || '';
-            ap      = parts[parts.length - 2] || '';
-            feature = parts[parts.length - 3] || '';
-            color   = parts[parts.length - 4] || '';
+            dp = parts[parts.length - 1] || '';
+            ap = parts[parts.length - 2] || '';
 
-            name = parts.slice(5, parts.length - 4).join(' ');
+            // 從後往前找真正的顏色 token（避免卡名含顏色字時誤判）
+            let colorIndex = -1;
+            for (let i = parts.length - 3; i >= 5; i--) {
+                if (COLORS.includes(parts[i])) {
+                    colorIndex = i;
+                    break;
+                }
+            }
+
+            if (colorIndex !== -1) {
+                name    = parts.slice(5, colorIndex).join(' ');
+                color   = parts[colorIndex];
+                feature = parts.slice(colorIndex + 1, parts.length - 2).join(' ');
+            } else {
+                // 找不到顏色時，退回原本邏輯
+                name    = parts.slice(5, parts.length - 4).join(' ');
+                color   = parts[parts.length - 4] || '';
+                feature = parts[parts.length - 3] || '';
+            }
         }
     } catch (err) {
         console.warn('讀取 info.txt 失敗：', err);
@@ -914,15 +936,14 @@ function renderKeywords() {
         nameSpan.textContent = kw.name;
         label.appendChild(nameSpan);
 
-        if (kw.hasNumber) {
-            const numInput = document.createElement('input');
-            numInput.type = 'number';
-            numInput.className = 'number-input';
-            numInput.value = kw.defaultVal;
-            numInput.dataset.forKw = kw.id;
-            numInput.addEventListener('input', updatePreview);
-            numInput.addEventListener('click', (e) => e.stopPropagation());
-            label.appendChild(numInput);
+        if (kw.hasText) {
+            const textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.className = 'text-kw-input';
+            textInput.dataset.forKw = kw.id;
+            textInput.addEventListener('input', updatePreview);
+            textInput.addEventListener('click', (e) => e.stopPropagation());
+            label.appendChild(textInput);
         }
 
         keywordListContainer.appendChild(label);
@@ -1086,9 +1107,21 @@ function updatePreview() {
     let selectedKeywordsText = [];
     
     allKeywords.forEach(kw => {
-        const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
-        if (cb) {
-            let text = `〔${kw.name}`;
+    const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
+    if (cb) {
+        let text;
+        if (kw.customText) {
+            text = kw.customText;
+            // 若這個關鍵字有文字輸入框，把「」內的內容換成使用者輸入
+            if (kw.hasText) {
+                const textInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
+                if (textInput) {
+                    const val = textInput.value.trim();
+                    text = text.replace('「」', `「${val}」`);
+                }
+            }
+        } else {
+            text = `〔${kw.name}`;
             if (kw.hasNumber) {
                 const numInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
                 if (numInput) {
@@ -1096,9 +1129,10 @@ function updatePreview() {
                 }
             }
             text += `〕`;
-            selectedKeywordsText.push(`<b>${text}</b>`);
         }
-    });
+        selectedKeywordsText.push(`<b>${text}</b>`);
+    }
+});
 
     const customCb = document.getElementById('customKwCheckbox');
     const customNameInput = document.getElementById('customKwName');
