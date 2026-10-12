@@ -731,7 +731,6 @@ async function getCardInfo(seriesName, fileName) {
             dp = parts[parts.length - 1] || '';
             ap = parts[parts.length - 2] || '';
 
-            // 從後往前找真正的顏色 token（避免卡名含顏色字時誤判）
             let colorIndex = -1;
             for (let i = parts.length - 3; i >= 5; i--) {
                 if (COLORS.includes(parts[i])) {
@@ -745,7 +744,6 @@ async function getCardInfo(seriesName, fileName) {
                 color   = parts[colorIndex];
                 feature = parts.slice(colorIndex + 1, parts.length - 2).join(' ');
             } else {
-                // 找不到顏色時，退回原本邏輯
                 name    = parts.slice(5, parts.length - 4).join(' ');
                 color   = parts[parts.length - 4] || '';
                 feature = parts[parts.length - 3] || '';
