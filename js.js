@@ -229,7 +229,7 @@ const gallerySeriesByDate = [
 const FOLDER_ICON = 'folder-vector-icon-png_260858.jpg';
 const GALLERY_BASE = '官方卡圖';
 const EFFECT_BASE = '效果';
-
+const COLORS = ['赤', '青', '黄', '緑', '紫', '白', '黒'];
 const cardUIImages = {
     red_character_num: "img/紅色有數字.png",
     red_character_nonum: "img/紅色沒數字.png",
@@ -268,8 +268,8 @@ const allKeywords = [
     { id: 'toppa', name: '突破', hasNumber: true, defaultVal: 30, group: null },
     { id: 'tennen', name: '天然', hasNumber: true, defaultVal: 0, group: null },
     { id: 'free', name: '自由登場', hasNumber: false, group: null },
-    { id: 'renkei', name: '連携：「」', hasText: true, group: null, customText: '〔連携：「」〕', placeholder: '角色名' },
-    { id: 'keisho', name: '継承▶「」', hasText: true, group: null, customText: '〔継承〕▶「」', placeholder: '角色名' },
+    { id: 'renkei', name: '連携：「」', hasText: true, group: null, customText: '〔連携：「」〕' },
+    { id: 'keisho', name: '継承▶「」', hasText: true, group: null, customText: '〔継承〕▶「」' },
     { id: 'chiryaku', name: '知略▶「」', hasText: true, group: null, customText: '〔知略▶「」〕' },
     { id: 'ccsakura', name: 'カードキャプター', hasNumber: false, group: null },
 ];
@@ -714,7 +714,7 @@ async function getCardInfo(seriesName, fileName) {
     let rarity = '', number = cardId, cost = '', source = '', type = '', name = '', color = '', feature = '', ap = '', dp = '';
     let effect = '';
 
-    const COLORS = ['赤', '青', '黄', '緑', '紫', '白', '黒'];
+    
 
     try {
         const res = await fetch(infoUrl);
@@ -1215,12 +1215,12 @@ async function showCardAt(index) {
     const info = await getCardInfo(seriesName, fileName);
 
     openCardModal({
-        color: info.color,
         imgSrc: imgSrc,
         rarity: info.rarity,
         number: info.number,
         name: info.name,
         feature: info.feature,
+        color: info.color,
         cost: info.cost,
         ap: info.ap,
         source: info.source,
@@ -1244,9 +1244,7 @@ async function navigateCard(direction) {
 
     body.classList.add('fading');
     await new Promise(r => setTimeout(r, 250));
-
     await showCardAt(newIndex);
-
     body.classList.remove('fading');
 }
 
@@ -1281,7 +1279,8 @@ function initCardModal() {
         if (e.key === 'Escape') closeCardModal();
         if (e.key === 'ArrowLeft') navigateCard(-1);
         if (e.key === 'ArrowRight') navigateCard(1);
-    })
+    });
+}
 
 async function navigateCard(direction) {
     const newIndex = currentGalleryIndex + direction;
@@ -1307,19 +1306,6 @@ function updateModalNavButtons() {
     if (!prevBtn || !nextBtn) return;
     prevBtn.disabled = currentGalleryIndex <= 0;
     nextBtn.disabled = currentGalleryIndex >= currentGalleryFiles.length - 1;
-}
-    if (!cardModal) return;
-    modalCardImg.src = data.imgSrc || '';
-    modalRarity.textContent = data.rarity || '';
-    modalNumber.textContent = data.number || '';
-    modalName.textContent = data.name || '';
-    modalFeature.textContent = data.feature || '';
-    modalCost.textContent = data.cost || '';
-    modalAP.textContent = data.ap || '';
-    modalSource.textContent = data.source || '';
-    modalDP.textContent = data.dp || '';
-    modalEffect.textContent = data.effect || '';
-    cardModal.classList.add('open');
 }
 
 function closeCardModal() {
