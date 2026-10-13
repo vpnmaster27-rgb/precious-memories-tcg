@@ -1189,7 +1189,7 @@ function updatePreview() {
     let finalEffectContent = "";
 
     if (selectedKeywordsText.length > 0) {
-        finalEffectContent += selectedKeywordsText.join(' ');
+        finalEffectContent += selectedKeywordsText.join('');
         if (userEffectText.trim() !== "") {
             finalEffectContent += "\n" + userEffectText;
         }
