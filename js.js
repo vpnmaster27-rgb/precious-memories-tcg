@@ -270,7 +270,7 @@ const allKeywords = [
     { id: 'free', name: '自由登場', hasNumber: false, group: null },
     { id: 'renkei', name: '連携：「」', hasText: true, group: null, customText: '〔連携：「」〕' },
     { id: 'keisho', name: '継承▶「」', hasText: true, group: null, customText: '〔継承〕▶「」' },
-    { id: 'chiryaku', name: '知略▶「」', hasText: true, group: null, customText: '〔知略▶「」〕' },
+    { id: 'chiryaku', name: '知略 ▶「」', hasText: true, group: null, customText: '〔知略 ▶「」〕' },
     { id: 'ccsakura', name: 'カードキャプター', hasNumber: false, group: null },
 ];
 
@@ -900,6 +900,32 @@ function handleImageUpload(e) {
     }
 }
 
+// 讓輸入框寬度隨內容自動增減
+function autoResizeInput(input, minWidth = 50) {
+    const measure = () => {
+        const span = document.createElement('span');
+        const style = window.getComputedStyle(input);
+
+        span.style.position = 'absolute';
+        span.style.visibility = 'hidden';
+        span.style.whiteSpace = 'pre';
+        span.style.font = style.font;
+        span.style.padding = style.padding;
+        span.style.border = style.border;
+        span.style.boxSizing = 'border-box';
+        span.textContent = input.value || '';
+
+        document.body.appendChild(span);
+        const w = Math.max(span.offsetWidth, minWidth);
+        document.body.removeChild(span);
+
+        input.style.width = w + 'px';
+    };
+
+    input.addEventListener('input', measure);
+    measure();
+}
+
 function renderKeywords() {
     const currentType = cardTypeInput.value;
     const allowedIds = allowedKeywordsByType[currentType] || [];
@@ -934,6 +960,17 @@ function renderKeywords() {
         nameSpan.textContent = kw.name;
         label.appendChild(nameSpan);
 
+        if (kw.hasNumber) {
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.className = 'number-input';
+            numInput.value = kw.defaultVal;
+            numInput.dataset.forKw = kw.id;
+            numInput.addEventListener('input', updatePreview);
+            numInput.addEventListener('click', (e) => e.stopPropagation());
+            label.appendChild(numInput);
+        }
+
         if (kw.hasText) {
             const textInput = document.createElement('input');
             textInput.type = 'text';
@@ -942,6 +979,7 @@ function renderKeywords() {
             textInput.addEventListener('input', updatePreview);
             textInput.addEventListener('click', (e) => e.stopPropagation());
             label.appendChild(textInput);
+            autoResizeInput(textInput, 50);
         }
 
         keywordListContainer.appendChild(label);
@@ -964,6 +1002,7 @@ function renderKeywords() {
     customNameInput.value = savedCustomState.name;
     customNameInput.addEventListener('input', updatePreview);
     customNameInput.addEventListener('click', (e) => e.stopPropagation());
+    autoResizeInput(customNameInput, 80);
 
     const customValInput = document.createElement('input');
     customValInput.type = 'text';
@@ -973,6 +1012,7 @@ function renderKeywords() {
     customValInput.value = savedCustomState.val;
     customValInput.addEventListener('input', updatePreview);
     customValInput.addEventListener('click', (e) => e.stopPropagation());
+    autoResizeInput(customValInput, 50);
     customLabel.appendChild(customCb);
     customLabel.appendChild(customNameInput);
     customLabel.appendChild(customValInput);
