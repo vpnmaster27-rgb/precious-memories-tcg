@@ -12,7 +12,6 @@
 <body>
     <button type="button" id="gotoGalleryBtn" class="corner-btn">官方卡表</button>
 
-    <!-- 第一頁：卡片自製器 -->
     <div id="pageEditor" class="page active">
         <div class="container">
             <div class="form-section">
@@ -68,7 +67,6 @@
                     </div>
                 </div>
 
-                <!-- 插入時點型效果按鈕區 -->
                 <div class="input-group">
                     <label>插入時點型效果</label>
                     <div class="tag-btn-group" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
@@ -106,9 +104,7 @@
                     <div id="keywordList" class="keyword-list"></div>
                 </div>
             </div>
-            <!-- form-section 結尾 -->
 
-            <!-- 右側預覽區 -->
             <div class="preview-section">
                 <h3>即時預覽成品</h3>
                 <p style="font-size: 12px; color: #666; margin-top: 4px;">(可在卡片上直接拖拽圖片移動、滾輪縮放圖片)</p>
@@ -139,12 +135,9 @@
                     </label>
                 </div>
             </div>
-            <!-- preview-section 結尾 -->
         </div>
-        <!-- container 結尾 -->
     </div>
 
-    <!-- 第二頁：官方卡表 -->
     <div id="pageGallery" class="page">
         <div class="gallery-container">
             
@@ -165,12 +158,9 @@
                 </div>
                 <div class="gallery-content" id="galleryCardsList"></div>
             </div>
-
         </div>
     </div>
-    <!-- pageGallery 結尾 -->
-
-    <!-- 卡片詳情 Modal -->
+    
     <div id="cardModal" class="card-modal">
         <div class="card-modal-backdrop"></div>
         <div class="card-modal-content">
@@ -178,11 +168,9 @@
             <button type="button" class="card-modal-nav card-modal-prev" id="modalPrevBtn"></button>
             <button type="button" class="card-modal-nav card-modal-next" id="modalNextBtn"></button>
             <div class="card-modal-body">
-                <!-- 左側：卡圖 -->
                 <div class="card-modal-image">
                     <img id="modalCardImg" src="" alt="Card">
                 </div>
-                <!-- 右側：資訊 -->
                 <div class="card-modal-info">
                     <div class="modal-row modal-row-top">
                         <div class="modal-box">
