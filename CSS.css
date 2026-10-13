@@ -412,8 +412,25 @@
             width: 435px;
             height: 40px;
             font-weight: 700; 
+            line-height: 1.4;
             transform-origin: center center;
             font-family: "Yu Gothic", "MS Gothic", "Hiragino Kaku Gothic Pro", sans-serif;
+        }
+
+        #prevEffect,
+        #prevEffect b,
+        #prevEffect span {
+            font-weight: 700;
+        }
+
+        #prevEffect {
+            font-family: "Yu Gothic", "Hiragino Sans", "Meiryo", "MS PGothic", sans-serif;
+        }
+
+        #prevEffect {
+            font-family: "Yu Gothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            font-weight: 700;
+            -webkit-font-smoothing: antialiased;   /* macOS 平滑 */
         }
 
         .card-effect img.inline-effect-icon {
