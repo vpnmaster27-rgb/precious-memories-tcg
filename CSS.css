@@ -806,6 +806,37 @@
             margin-top: 4px;
         }
 
+        /* 稀有度 / 卡號 / 種類 這一行：三個並排縮小、不換行 */
+        .modal-row-top {
+            flex-wrap: nowrap;
+        }
+
+        .modal-row-top .modal-box {
+            padding: 4px 6px;
+            gap: 4px;
+            min-height: 30px;
+            min-width: 0;         /* 允許 flex 子項壓縮 */
+            overflow: hidden;
+        }
+
+        .modal-row-top .modal-label {
+            font-size: 11px;
+        }
+
+        /* 除效果文外，每個欄位在標籤與值之間加分隔線 */
+        .modal-box:not(.modal-box-effect) .modal-label {
+            border-right: 1px solid #999;
+            padding-right: 8px;
+            margin-right: 2px;
+        }
+
+        .modal-row-top .modal-value {
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
         /* 左右箭頭 */
         .card-modal-nav {
             position: absolute;
@@ -843,7 +874,7 @@
             position: absolute;
             top: 50%;
             left: 50%;
-}
+        }
 
         /* 左箭頭：旋轉 225 度，並往左微調 */
         .card-modal-prev::before {
@@ -881,8 +912,7 @@
         @media (max-width: 700px) {
             .card-modal-nav {
                 width: 36px;
-                height: 36px;
-                font-size: 22px;
+                height: 36px
             }
             .card-modal-prev { left: 4px; }
             .card-modal-next { right: 4px; }

@@ -1220,6 +1220,7 @@ const cardModalClose = document.getElementById('cardModalClose');
 const modalCardImg = document.getElementById('modalCardImg');
 const modalRarity = document.getElementById('modalRarity');
 const modalNumber = document.getElementById('modalNumber');
+const modalType = document.getElementById('modalType');
 const modalName = document.getElementById('modalName');
 const modalFeature = document.getElementById('modalFeature');
 const modalColor = document.getElementById('modalColor');
@@ -1234,6 +1235,7 @@ function openCardModal(data) {
     modalCardImg.src = data.imgSrc || '';
     modalRarity.textContent = data.rarity || '';
     modalNumber.textContent = data.number || '';
+    modalType.textContent = data.type || '';
     modalName.textContent = data.name || '';
     modalFeature.textContent = data.feature || '';
     modalColor.textContent = data.color || '';
@@ -1258,6 +1260,7 @@ async function showCardAt(index) {
         imgSrc: imgSrc,
         rarity: info.rarity,
         number: info.number,
+        type: info.type,
         name: info.name,
         feature: info.feature,
         color: info.color,
@@ -1285,58 +1288,6 @@ async function navigateCard(direction) {
     body.classList.add('fading');
     await new Promise(r => setTimeout(r, 250));
     await showCardAt(newIndex);
-    body.classList.remove('fading');
-}
-
-function updateModalNavButtons() {
-    const prevBtn = document.getElementById('modalPrevBtn');
-    const nextBtn = document.getElementById('modalNextBtn');
-    if (!prevBtn || !nextBtn) return;
-    prevBtn.disabled = currentGalleryIndex <= 0;
-    nextBtn.disabled = currentGalleryIndex >= currentGalleryFiles.length - 1;
-}
-
-function closeCardModal() {
-    if (!cardModal) return;
-    cardModal.classList.remove('open');
-}
-
-function initCardModal() {
-    if (!cardModal) return;
-
-    cardModalClose.addEventListener('click', closeCardModal);
-
-    const backdrop = cardModal.querySelector('.card-modal-backdrop');
-    if (backdrop) backdrop.addEventListener('click', closeCardModal);
-
-    const prevBtn = document.getElementById('modalPrevBtn');
-    const nextBtn = document.getElementById('modalNextBtn');
-    if (prevBtn) prevBtn.addEventListener('click', () => navigateCard(-1));
-    if (nextBtn) nextBtn.addEventListener('click', () => navigateCard(1));
-
-    document.addEventListener('keydown', (e) => {
-        if (!cardModal.classList.contains('open')) return;
-        if (e.key === 'Escape') closeCardModal();
-        if (e.key === 'ArrowLeft') navigateCard(-1);
-        if (e.key === 'ArrowRight') navigateCard(1);
-    });
-}
-
-async function navigateCard(direction) {
-    const newIndex = currentGalleryIndex + direction;
-    if (newIndex < 0 || newIndex >= currentGalleryFiles.length) return;
-
-    const body = cardModal.querySelector('.card-modal-body');
-    if (!body) {
-        showCardAt(newIndex);
-        return;
-    }
-
-    body.classList.add('fading');
-    await new Promise(r => setTimeout(r, 250));
-
-    await showCardAt(newIndex);
-
     body.classList.remove('fading');
 }
 
