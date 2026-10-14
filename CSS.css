@@ -1113,3 +1113,108 @@
         border: 1px solid #ccc;
         border-radius: 4px;
     }
+
+        /* ===== 上傳圖片裁切 Modal ===== */
+    .upload-crop-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 20000;
+    }
+
+    .upload-crop-modal.open {
+        display: block;
+    }
+
+    .upload-crop-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+    }
+
+    .upload-crop-content {
+        position: relative;
+        background: #fff;
+        max-width: 90vw;
+        max-height: 92vh;
+        margin: 4vh auto;
+        padding: 20px 24px;
+        border-radius: 10px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        overflow: auto;
+    }
+
+    .upload-crop-title {
+        font-size: 18px;
+        color: #333;
+    }
+
+    .upload-crop-hint {
+        font-size: 12px;
+        color: #888;
+    }
+
+    .upload-crop-stage {
+        position: relative;
+        display: inline-block;
+        line-height: 0;
+        user-select: none;
+        touch-action: none;
+    }
+
+    .upload-crop-img {
+        display: block;
+        max-width: 80vw;
+        max-height: 60vh;
+        pointer-events: none;
+        user-select: none;
+        border-radius: 4px;
+    }
+
+    .upload-crop-box {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border: 2px solid #4da6ff;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+        box-sizing: border-box;
+        cursor: move;
+        min-width: 30px;
+        min-height: 30px;
+    }
+
+    .upload-crop-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 4px;
+    }
+
+    .crop-handle {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: #4da6ff;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        box-sizing: border-box;
+        z-index: 10;
+    }
+
+    .upload-crop-actions .btn {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        filter: brightness(1.15);
+    }
+
+    .upload-crop-actions .btn:hover {
+        filter: brightness(1.25);
+    }
+
+.crop-handle.nw { top: -8px; left: -8px; cursor: nwse-resize; }
+.crop-handle.ne { top: -8px; right: -8px; cursor: nesw-resize; }
+.crop-handle.sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+.crop-handle.se { bottom: -8px; right: -8px; cursor: nwse-resize; }

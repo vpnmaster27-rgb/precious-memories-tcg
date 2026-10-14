@@ -391,6 +391,12 @@ const resetImgBtn = document.getElementById('resetImgBtn');
 const clearImgBtn = document.getElementById('clearImgBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const rotateImgBtn = document.getElementById('rotateImgBtn');
+const uploadCropModal = document.getElementById('uploadCropModal');
+const uploadCropImg = document.getElementById('uploadCropImg');
+const uploadCropBox = document.getElementById('uploadCropBox');
+const uploadCropStage = document.getElementById('uploadCropStage');
+const uploadCropConfirm = document.getElementById('uploadCropConfirm');
+const uploadCropCancel = document.getElementById('uploadCropCancel');
 const cardNumberInput = document.getElementById('cardNumber');
 const prevNumber = document.getElementById('prevNumber');
 
@@ -404,6 +410,22 @@ let imgState = {
     isDragging: false,
     startX: 0,
     startY: 0
+};
+
+let cropState = {
+    active: false,
+    x: 0, y: 0, w: 0, h: 0,
+    dragMode: null,
+    startX: 0, startY: 0,
+    startBox: null,
+    savedImgState: null
+};
+
+let uploadCropState = {
+    x: 0, y: 0, w: 0, h: 0,
+    dragMode: null,
+    startX: 0, startY: 0,
+    startBox: null
 };
 
 function getCurrentGallerySeries() {
@@ -926,6 +948,7 @@ function init() {
     downloadBtn.addEventListener('click', downloadCard);
 
     initImageControls();
+    initUploadCropControls();
     initTagButtons();
     initStepperControls();
     renderKeywords();
@@ -953,15 +976,240 @@ function handleNumberState() {
 
 function handleImageUpload(e) {
     const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            bgImg.src = event.target.result;
-            bgImg.style.display = 'block';
-            resetImageTransform();
+    if (!file) return;
+    openUploadCropModal(file);
+    e.target.value = '';
+}
+
+function openUploadCropModal(file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        uploadCropModal.classList.add('open');
+        uploadCropImg.src = event.target.result;
+
+        const trySetupBox = (retry = 0) => {
+            const rw = uploadCropImg.offsetWidth;
+            const rh = uploadCropImg.offsetHeight;
+
+            if ((rw === 0 || rh === 0) && retry < 30) {
+                requestAnimationFrame(() => trySetupBox(retry + 1));
+                return;
+            }
+
+            uploadCropState.x = 0;
+            uploadCropState.y = 0;
+            uploadCropState.w = rw;
+            uploadCropState.h = rh;
+            updateUploadCropBoxUI();
+
+            console.log('裁切框初始化：', { rw, rh, naturalW: uploadCropImg.naturalWidth, naturalH: uploadCropImg.naturalHeight });
         };
-        reader.readAsDataURL(file);
-    }
+
+        requestAnimationFrame(() => trySetupBox(0));
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateUploadCropBoxUI() {
+    uploadCropBox.style.left = uploadCropState.x + 'px';
+    uploadCropBox.style.top = uploadCropState.y + 'px';
+    uploadCropBox.style.width = uploadCropState.w + 'px';
+    uploadCropBox.style.height = uploadCropState.h + 'px';
+}
+
+function closeUploadCropModal() {
+    uploadCropModal.classList.remove('open');
+    uploadCropState.dragMode = null;
+    uploadCropState.startBox = null;
+}
+
+function confirmUploadCrop() {
+    const rw = uploadCropImg.offsetWidth;
+    const rh = uploadCropImg.offsetHeight;
+    const nw = uploadCropImg.naturalWidth;
+    const nh = uploadCropImg.naturalHeight;
+
+    const scaleX = nw / rw;
+    const scaleY = nh / rh;
+
+    let sx = Math.round(uploadCropState.x * scaleX);
+    let sy = Math.round(uploadCropState.y * scaleY);
+    let sw = Math.round(uploadCropState.w * scaleX);
+    let sh = Math.round(uploadCropState.h * scaleY);
+
+    sx = Math.max(0, sx);
+    sy = Math.max(0, sy);
+    sw = Math.min(nw - sx, sw);
+    sh = Math.min(nh - sy, sh);
+
+    if (sw < 1 || sh < 1) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(uploadCropImg, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    bgImg.src = canvas.toDataURL('image/png');
+    bgImg.style.display = 'block';
+    resetImageTransform();
+
+    closeUploadCropModal();
+}
+
+function initUploadCropControls() {
+    if (!uploadCropModal) return;
+
+    uploadCropConfirm.addEventListener('click', confirmUploadCrop);
+    uploadCropCancel.addEventListener('click', closeUploadCropModal);
+
+    const backdrop = uploadCropModal.querySelector('.upload-crop-backdrop');
+    backdrop.addEventListener('click', closeUploadCropModal);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && uploadCropModal.classList.contains('open')) {
+            closeUploadCropModal();
+        }
+    });
+
+    // 拖曳裁切框
+    uploadCropBox.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('crop-handle')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        uploadCropState.dragMode = 'move';
+        uploadCropState.startX = e.clientX;
+        uploadCropState.startY = e.clientY;
+        uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
+    });
+
+    uploadCropBox.querySelectorAll('.crop-handle').forEach(h => {
+        h.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadCropState.dragMode = h.dataset.handle;
+            uploadCropState.startX = e.clientX;
+            uploadCropState.startY = e.clientY;
+            uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
+        });
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!uploadCropModal.classList.contains('open') || !uploadCropState.dragMode) return;
+
+        const dx = e.clientX - uploadCropState.startX;
+        const dy = e.clientY - uploadCropState.startY;
+        const sb = uploadCropState.startBox;
+        const boxW = uploadCropImg.offsetWidth;
+        const boxH = uploadCropImg.offsetHeight;
+        const MIN = 20;
+
+        if (uploadCropState.dragMode === 'move') {
+            uploadCropState.x = Math.max(0, Math.min(boxW - sb.w, sb.x + dx));
+            uploadCropState.y = Math.max(0, Math.min(boxH - sb.h, sb.y + dy));
+        } else {
+            let x1 = sb.x, y1 = sb.y, x2 = sb.x + sb.w, y2 = sb.y + sb.h;
+            if (uploadCropState.dragMode.includes('w')) x1 = sb.x + dx;
+            if (uploadCropState.dragMode.includes('e')) x2 = sb.x + sb.w + dx;
+            if (uploadCropState.dragMode.includes('n')) y1 = sb.y + dy;
+            if (uploadCropState.dragMode.includes('s')) y2 = sb.y + sb.h + dy;
+
+            x1 = Math.max(0, Math.min(boxW, x1));
+            y1 = Math.max(0, Math.min(boxH, y1));
+            x2 = Math.max(0, Math.min(boxW, x2));
+            y2 = Math.max(0, Math.min(boxH, y2));
+
+            if (x2 - x1 < MIN) {
+                if (uploadCropState.dragMode.includes('w')) x1 = x2 - MIN;
+                else x2 = x1 + MIN;
+            }
+            if (y2 - y1 < MIN) {
+                if (uploadCropState.dragMode.includes('n')) y1 = y2 - MIN;
+                else y2 = y1 + MIN;
+            }
+
+            uploadCropState.x = x1;
+            uploadCropState.y = y1;
+            uploadCropState.w = x2 - x1;
+            uploadCropState.h = y2 - y1;
+        }
+
+        updateUploadCropBoxUI();
+    });
+
+    window.addEventListener('mouseup', () => {
+        uploadCropState.dragMode = null;
+        uploadCropState.startBox = null;
+    });
+
+    // 觸控支援
+    uploadCropBox.addEventListener('touchstart', (e) => {
+        if (e.target.classList.contains('crop-handle')) return;
+        e.preventDefault();
+        uploadCropState.dragMode = 'move';
+        uploadCropState.startX = e.touches[0].clientX;
+        uploadCropState.startY = e.touches[0].clientY;
+        uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
+    }, { passive: false });
+
+    uploadCropBox.querySelectorAll('.crop-handle').forEach(h => {
+        h.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            uploadCropState.dragMode = h.dataset.handle;
+            uploadCropState.startX = e.touches[0].clientX;
+            uploadCropState.startY = e.touches[0].clientY;
+            uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
+        }, { passive: false });
+    });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!uploadCropModal.classList.contains('open') || !uploadCropState.dragMode || e.touches.length !== 1) return;
+        e.preventDefault();
+
+        const dx = e.touches[0].clientX - uploadCropState.startX;
+        const dy = e.touches[0].clientY - uploadCropState.startY;
+        const sb = uploadCropState.startBox;
+        const boxW = uploadCropImg.offsetWidth;
+        const boxH = uploadCropImg.offsetHeight;
+        const MIN = 20;
+
+        if (uploadCropState.dragMode === 'move') {
+            uploadCropState.x = Math.max(0, Math.min(boxW - sb.w, sb.x + dx));
+            uploadCropState.y = Math.max(0, Math.min(boxH - sb.h, sb.y + dy));
+        } else {
+            let x1 = sb.x, y1 = sb.y, x2 = sb.x + sb.w, y2 = sb.y + sb.h;
+            if (uploadCropState.dragMode.includes('w')) x1 = sb.x + dx;
+            if (uploadCropState.dragMode.includes('e')) x2 = sb.x + sb.w + dx;
+            if (uploadCropState.dragMode.includes('n')) y1 = sb.y + dy;
+            if (uploadCropState.dragMode.includes('s')) y2 = sb.y + sb.h + dy;
+
+            x1 = Math.max(0, Math.min(boxW, x1));
+            y1 = Math.max(0, Math.min(boxH, y1));
+            x2 = Math.max(0, Math.min(boxW, x2));
+            y2 = Math.max(0, Math.min(boxH, y2));
+
+            if (x2 - x1 < MIN) {
+                if (uploadCropState.dragMode.includes('w')) x1 = x2 - MIN;
+                else x2 = x1 + MIN;
+            }
+            if (y2 - y1 < MIN) {
+                if (uploadCropState.dragMode.includes('n')) y1 = y2 - MIN;
+                else y2 = y1 + MIN;
+            }
+
+            uploadCropState.x = x1;
+            uploadCropState.y = y1;
+            uploadCropState.w = x2 - x1;
+            uploadCropState.h = y2 - y1;
+        }
+
+        updateUploadCropBoxUI();
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
+        uploadCropState.dragMode = null;
+        uploadCropState.startBox = null;
+    });
 }
 
 // 讓輸入框寬度隨內容自動增減

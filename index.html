@@ -251,7 +251,27 @@
             </div>
         </div>
     </div>
-
+    <!-- 上傳圖片裁切 Modal -->
+    <div id="uploadCropModal" class="upload-crop-modal">
+        <div class="upload-crop-backdrop"></div>
+        <div class="upload-crop-content">
+            <h3 class="upload-crop-title">調整裁切範圍</h3>
+            <p class="upload-crop-hint">拖曳框線調整要保留的區域，確認後放入預覽。</p>
+            <div class="upload-crop-stage" id="uploadCropStage">
+                <img id="uploadCropImg" class="upload-crop-img" src="" alt="Crop Preview">
+                <div id="uploadCropBox" class="upload-crop-box">
+                    <div class="crop-handle nw" data-handle="nw"></div>
+                    <div class="crop-handle ne" data-handle="ne"></div>
+                    <div class="crop-handle sw" data-handle="sw"></div>
+                    <div class="crop-handle se" data-handle="se"></div>
+                </div>
+            </div>
+            <div class="upload-crop-actions">
+                <button type="button" class="btn btn-clear" id="uploadCropCancel">取消</button>
+                <button type="button" class="btn btn-download" id="uploadCropConfirm">確認裁切</button>
+            </div>
+        </div>
+    </div>
     <script src="js.js"></script>
 </body>
 </html>
