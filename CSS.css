@@ -1086,3 +1086,30 @@
         line-height: 1.1;
     }
 }
+
+/* 卡表篩選器列 */
+    .gallery-filter-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+    }
+
+    .gallery-filter-select {
+        padding: 6px 10px;
+        font-size: 13px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .gallery-search-input {
+        flex: 1;
+        min-width: 160px;
+        padding: 6px 10px;
+        font-size: 13px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }

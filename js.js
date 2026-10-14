@@ -675,6 +675,7 @@ function renderGallerySeriesList() {
 }
 
 const galleryCardsCache = {};
+const cardInfoCache = {};
 
 let currentGallerySeriesName = '';
 let currentGalleryFiles = [];
@@ -706,6 +707,9 @@ async function loadSeriesCards(seriesName) {
 }
 
 async function getCardInfo(seriesName, fileName) {
+    const cacheKey = seriesName + '::' + fileName;
+    if (cardInfoCache[cacheKey]) return cardInfoCache[cacheKey];
+
     const baseName = fileName.replace(/\.[^.]+$/, '');
     const cardId = baseName.split('_').pop();
 
@@ -765,9 +769,11 @@ async function getCardInfo(seriesName, fileName) {
             console.warn('讀取效果文失敗：', err);
         }
     }
-
+        cardInfoCache[cacheKey] = { rarity, number, cost, source, type, name, color, feature, ap, dp, effect };
     return { rarity, number, cost, source, type, name, color, feature, ap, dp, effect };
 }
+
+let currentGalleryCardsData = [];
 
 async function openSeries(seriesName) {
     const seriesView = document.getElementById('gallerySeriesView');
@@ -776,7 +782,7 @@ async function openSeries(seriesName) {
     const list = document.getElementById('galleryCardsList');
 
     title.textContent = seriesName;
-    list.innerHTML = '<p style="color:#888;">載入中...</p>';
+    list.innerHTML = '<p style="color:#888;">載入卡片資料中...</p>';
 
     seriesView.style.display = 'none';
     cardsView.style.display = 'block';
@@ -786,25 +792,69 @@ async function openSeries(seriesName) {
     toggleBtn.textContent = '回上一頁';
     toggleBtn.dataset.mode = 'backToSeries';
 
+    const filterColor = document.getElementById('filterColor');
+    const filterType = document.getElementById('filterType');
+    const gallerySearch = document.getElementById('gallerySearch');
+    if (filterColor) filterColor.value = '';
+    if (filterType) filterType.value = '';
+    if (gallerySearch) gallerySearch.value = '';
+
     const files = await loadSeriesCards(seriesName);
 
     currentGallerySeriesName = seriesName;
     currentGalleryFiles = files;
     currentGalleryIndex = -1;
 
-    list.innerHTML = '';
-
     if (files.length === 0) {
         list.innerHTML = '<p style="color:#888;">這個系列目前沒有圖片，或 list.txt 不存在。</p>';
+        currentGalleryCardsData = [];
         return;
     }
 
-        files.forEach((fileName, index) => {
+    const cardsData = await Promise.all(
+        files.map(async (fileName, index) => {
+            const info = await getCardInfo(seriesName, fileName);
+            return { fileName, index, info };
+        })
+    );
+
+    currentGalleryCardsData = cardsData;
+    renderGalleryCards();
+}
+
+function renderGalleryCards() {
+    const list = document.getElementById('galleryCardsList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const colorFilter = document.getElementById('filterColor')?.value || '';
+    const typeFilter = document.getElementById('filterType')?.value || '';
+    const searchText = document.getElementById('gallerySearch')?.value.trim() || '';
+
+    const filtered = currentGalleryCardsData.filter(({ info }) => {
+        if (colorFilter && info.color !== colorFilter) return false;
+        if (typeFilter && info.type !== typeFilter) return false;
+        if (searchText) {
+            const haystack = [
+                info.name, info.number, info.feature,
+                info.effect, info.rarity, info.color, info.type
+            ].join(' ');
+            if (!haystack.includes(searchText)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<p style="color:#888;">沒有符合條件的卡片。</p>';
+        return;
+    }
+
+    filtered.forEach(({ fileName, index }) => {
         const card = document.createElement('div');
         card.className = 'gallery-card';
         card.style.cursor = 'pointer';
 
-        const imgSrc = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/' + encodeURIComponent(fileName);
+        const imgSrc = GALLERY_BASE + '/' + encodeURIComponent(currentGallerySeriesName) + '/' + encodeURIComponent(fileName);
 
         const img = document.createElement('img');
         img.src = imgSrc;
@@ -824,6 +874,18 @@ async function openSeries(seriesName) {
 
         list.appendChild(card);
     });
+}
+
+function initGalleryFilters() {
+    const filterColor = document.getElementById('filterColor');
+    const filterType = document.getElementById('filterType');
+    const gallerySearch = document.getElementById('gallerySearch');
+
+    if (filterColor) filterColor.addEventListener('change', renderGalleryCards);
+    if (filterType) filterType.addEventListener('change', renderGalleryCards);
+    if (gallerySearch) {
+        gallerySearch.addEventListener('input', renderGalleryCards);
+    }
 }
 
 function backToSeriesList() {
@@ -872,6 +934,7 @@ function init() {
     initPageNavigation();
     initGallerySortButtons();
     renderGallerySeriesList();
+    initGalleryFilters();
     initCardModal();
 
 }

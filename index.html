@@ -153,11 +153,29 @@
             </div>
 
             <div id="galleryCardsView" style="display: none;">
-                <div class="gallery-header">
-                    <h2 id="galleryCardsTitle">系列名稱</h2>
-                </div>
-                <div class="gallery-content" id="galleryCardsList"></div>
-            </div>
+    <div class="gallery-header">
+        <h2 id="galleryCardsTitle">系列名稱</h2>
+        <div class="gallery-filter-bar">
+            <select id="filterColor" class="gallery-filter-select">
+                <option value="">全部顏色</option>
+                <option value="赤">赤</option>
+                <option value="青">青</option>
+                <option value="黄">黄</option>
+                <option value="緑">緑</option>
+                <option value="紫">紫</option>
+                <option value="白">白</option>
+            </select>
+            <select id="filterType" class="gallery-filter-select">
+                <option value="">全部種類</option>
+                <option value="キャラクター">角色</option>
+                <option value="イベント">事件</option>
+                <option value="サポート">裝備</option>
+            </select>
+            <input type="text" id="gallerySearch" class="gallery-search-input" placeholder="搜尋卡名、卡號、效果...">
+        </div>
+    </div>
+    <div class="gallery-content" id="galleryCardsList"></div>
+</div>
         </div>
     </div>
     
