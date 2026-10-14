@@ -754,7 +754,8 @@ async function getCardInfo(seriesName, fileName) {
     }
 
     if (name) {
-        const effectUrl = `${EFFECT_BASE}/${encodeURIComponent(seriesName)}/${encodeURIComponent(cardId + '-' + name)}.txt`;
+        const safeName = name.replace(/[\\/:*?"<>|]/g, '_');
+        const effectUrl = `${EFFECT_BASE}/${encodeURIComponent(seriesName)}/${encodeURIComponent(cardId + '-' + safeName)}.txt`;
         try {
             const res2 = await fetch(effectUrl);
             if (res2.ok) {

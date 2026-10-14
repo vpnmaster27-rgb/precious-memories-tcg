@@ -430,12 +430,12 @@
         #prevEffect {
             font-family: "Yu Gothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
             font-weight: 700;
-            -webkit-font-smoothing: antialiased;   /* macOS 平滑 */
+            -webkit-font-smoothing: antialiased;
         }
 
         .card-effect img.inline-effect-icon {
-            height: 1.1em;             /* 自動縮放到與文字同高 */
-            vertical-align: -0.15em;    /* 微調與文字基線對齊 */
+            height: 1.1em;
+            vertical-align: -0.15em;
             display: inline-block;
             margin: 0 3px;
         }
