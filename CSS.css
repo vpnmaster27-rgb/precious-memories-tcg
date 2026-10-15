@@ -1218,3 +1218,43 @@
 .crop-handle.ne { top: -8px; right: -8px; cursor: nesw-resize; }
 .crop-handle.sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
 .crop-handle.se { bottom: -8px; right: -8px; cursor: nwse-resize; }
+
+    /*匯入*/
+    .batch-bar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .batch-counter { font-size: 14px; color: #555; }
+
+    .card-stage {
+        position: relative;
+        width: fit-content;
+    }
+    .batch-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 36px;
+        height: 64px;
+        border: none;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 5;
+    }
+    .batch-arrow:hover:not(:disabled) { background: rgba(0, 0, 0, 0.8); }
+    .batch-arrow:disabled { opacity: 0.25; cursor: default; }
+    .batch-prev { left: -44px; }
+    .batch-next { right: -44px; }
+
+    /* 手機版：空間不夠，箭頭疊在卡片邊緣 */
+    @media (max-width: 768px) {
+        .batch-arrow { width: 30px; height: 52px; opacity: 0.7; }
+        .batch-prev { left: 2px; }
+        .batch-next { right: 2px; }
+    }

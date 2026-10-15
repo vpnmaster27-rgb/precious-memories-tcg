@@ -626,6 +626,7 @@ async function downloadCard() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(afterDownloadAdvance, 0);
     } catch (err) {
         console.error('下載圖片失敗:', err);
         alert('下載失敗，請嘗試重新整理頁面後再試一次。');
@@ -959,7 +960,7 @@ function init() {
     renderGallerySeriesList();
     initGalleryFilters();
     initCardModal();
-
+    initBatchImport();
 }
 
 function handleNumberState() {
@@ -1664,6 +1665,270 @@ function initPageNavigation() {
         }
         window.scrollTo(0, 0);
     });
+}
+
+/* ================= 批次匯入 ================= */
+const batch = { cards: [], index: -1, active: false };
+
+const COLOR_MAP = {
+    '赤': 'red', '紅': 'red', '紅色': 'red', 'red': 'red',
+    '青': 'blue', '藍': 'blue', '藍色': 'blue', 'blue': 'blue',
+    '緑': 'green', '綠': 'green', '綠色': 'green', 'green': 'green',
+    '黄': 'yellow', '黃': 'yellow', '黃色': 'yellow', 'yellow': 'yellow',
+    '紫': 'purple', '紫色': 'purple', 'purple': 'purple'
+};
+
+function cellText(v) {
+    return String(v ?? '').replace(/\r\n/g, '\n').trim();
+}
+
+function keywordBaseName(kw) {
+    return kw.name.replace(/\s*[：▶].*$/, '');
+}
+
+function resolveType(typeText, apText, dpText) {
+    const t = typeText.toLowerCase();
+    if (/イベント|事件|event/.test(t)) return 'event';
+    if (/サポート|裝備|装備|support/.test(t)) return 'support';
+    if (/無數字|无数字|nonum/.test(t)) return 'character_nonum';
+    if (/有數字|character_num/.test(t)) return 'character_num';
+    return (apText !== '' || dpText !== '') ? 'character_num' : 'character_nonum';
+}
+
+function toNumber(text, label, rowNo, warnings) {
+    if (text === '') return 0;
+    const n = Number(text);
+    if (Number.isNaN(n)) {
+        warnings.push(`第 ${rowNo} 列：${label}「${text}」不是數字，已改為 0`);
+        return 0;
+    }
+    return n;
+}
+
+function parseKeywords(text, rowNo, warnings) {
+    const result = [];
+    text.split(/[\n;；]+/).map(s => s.trim()).filter(Boolean).forEach(token => {
+        const m = token.match(/^([^:：]+?)\s*[:：]\s*([\s\S]*)$/);
+        const name = (m ? m[1] : token).trim();
+        const val = m ? m[2].trim().replace(/^「/, '').replace(/」$/, '') : '';
+        const kw = allKeywords.find(k => k.id === name || k.name === name || keywordBaseName(k) === name);
+        if (!kw) {
+            warnings.push(`第 ${rowNo} 列：找不到關鍵字「${name}」`);
+            return;
+        }
+        result.push({ id: kw.id, val });
+    });
+    return result;
+}
+
+function rowToCard(row, rowNo, order, warnings) {
+    const [number, name, colorTxt, typeTxt, c, s, ap, dp, effect, kwTxt] =
+        Array.from({ length: 10 }, (_, i) => cellText(row[i]));
+
+    let color = COLOR_MAP[colorTxt.toLowerCase()] || COLOR_MAP[colorTxt];
+    if (!color) {
+        warnings.push(`第 ${rowNo} 列：顏色「${colorTxt}」編輯器不支援，已先用紅色`);
+        color = 'red';
+    }
+
+    return {
+        order,
+        number, name, color,
+        type: resolveType(typeTxt, ap, dp),
+        c: toNumber(c, 'C', rowNo, warnings),
+        s: toNumber(s, 'S', rowNo, warnings),
+        ap: toNumber(ap, 'AP', rowNo, warnings),
+        dp: toNumber(dp, 'DP', rowNo, warnings),
+        effect,
+        keywords: parseKeywords(kwTxt, rowNo, warnings),
+        custom: { name: '', val: '', checked: false },
+        image: null,
+        imgState: null
+    };
+}
+
+async function handleExcelImport(file) {
+    try {
+        const wb = XLSX.read(await file.arrayBuffer());
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+        const warnings = [];
+
+        let headerIdx = rows.findIndex(r => cellText(r[0]).includes('卡號'));
+        if (headerIdx < 0) {
+            headerIdx = 1;
+            warnings.push('找不到標題列（A 欄含「卡號」），已預設從第 3 列開始讀取');
+        }
+
+        const cards = [];
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const r = rows[i];
+            const isEmpty = r.every(v => cellText(v) === '');
+            const isExample = cellText(r[0]).startsWith('範例') || cellText(r[1]).startsWith('*');
+            if (isEmpty || isExample) continue;
+            cards.push(rowToCard(r, i + 1, cards.length, warnings));
+        }
+
+        if (!cards.length) {
+            alert('找不到有效的卡片資料，請確認檔案格式。');
+            return;
+        }
+
+        cards.sort((a, b) => {
+            if (!a.number && !b.number) return a.order - b.order;
+            if (!a.number) return 1;
+            if (!b.number) return -1;
+            return a.number.localeCompare(b.number, undefined, { numeric: true }) || a.order - b.order;
+        });
+
+        batch.cards = cards;
+        batch.active = true;
+        batch.index = -1;
+        goTo(0);
+
+        if (warnings.length) {
+            const shown = warnings.slice(0, 10).join('\n');
+            const more = warnings.length > 10 ? `\n…還有 ${warnings.length - 10} 則` : '';
+            alert(`匯入完成，共 ${cards.length} 張。以下項目請確認：\n\n${shown}${more}`);
+        }
+    } catch (err) {
+        console.error('Excel 匯入失敗:', err);
+        alert('讀取 Excel 失敗，請確認檔案格式。');
+    }
+}
+
+function setInputValue(el, val) {
+    if (!el) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function snapshotForm() {
+    const keywords = [];
+    keywordListContainer.querySelectorAll('input[type="checkbox"][data-id]:checked').forEach(cb => {
+        const id = cb.dataset.id;
+        const inp = keywordListContainer.querySelector(`input[data-for-kw="${id}"]`);
+        keywords.push({ id, val: inp ? inp.value : '' });
+    });
+
+    const hasImg = bgImg.style.display !== 'none' && bgImg.getAttribute('src');
+    return {
+        color: cardColorInput.value,
+        type: cardTypeInput.value,
+        name: cardNameInput.value,
+        number: cardNumberInput.value,
+        c: statCInput.value,
+        s: statSInput.value,
+        ap: statAPInput.value,
+        dp: statDPInput.value,
+        effect: cardEffectInput.value,
+        keywords,
+        custom: {
+            name: document.getElementById('customKwName')?.value || '',
+            val: document.getElementById('customKwVal')?.value || '',
+            checked: !!document.getElementById('customKwCheckbox')?.checked
+        },
+        image: hasImg ? bgImg.src : null,
+        imgState: {
+            scale: imgState.scale,
+            translateX: imgState.translateX,
+            translateY: imgState.translateY,
+            rotation: imgState.rotation
+        }
+    };
+}
+
+function saveCurrentCard() {
+    if (!batch.active || batch.index < 0) return;
+    Object.assign(batch.cards[batch.index], snapshotForm());
+}
+
+function loadCardToForm(card) {
+    cardColorInput.value = card.color;
+    cardTypeInput.value = card.type;
+    cardNameInput.value = card.name;
+    cardNumberInput.value = card.number;
+    statCInput.value = card.c;
+    statSInput.value = card.s;
+    statAPInput.value = card.ap;
+    statDPInput.value = card.dp;
+    cardEffectInput.value = card.effect;
+    currentTagState.group1 = null;
+    currentTagState.group2 = null;
+
+    renderKeywords();
+    handleNumberState();
+
+    card.keywords.forEach(({ id, val }) => {
+        const cb = keywordListContainer.querySelector(`input[data-id="${id}"]`);
+        if (!cb) return;
+        cb.checked = true;
+        handleKeywordChange({ target: cb });
+        const inp = keywordListContainer.querySelector(`input[data-for-kw="${id}"]`);
+        if (inp && val !== '') setInputValue(inp, val);
+    });
+
+    const custom = card.custom || { name: '', val: '', checked: false };
+    setInputValue(document.getElementById('customKwName'), custom.name);
+    setInputValue(document.getElementById('customKwVal'), custom.val);
+    document.getElementById('customKwCheckbox').checked = !!custom.checked;
+
+    if (card.image) {
+        bgImg.src = card.image;
+        bgImg.style.display = 'block';
+        Object.assign(imgState, card.imgState || { scale: 1, translateX: 0, translateY: 0, rotation: 0 });
+        imgState.isDragging = false;
+        applyImageTransform();
+    } else {
+        clearImage();
+    }
+
+    updatePreview();
+}
+
+function goTo(i) {
+    if (!batch.active || i < 0 || i >= batch.cards.length) return;
+    saveCurrentCard();
+    batch.index = i;
+    loadCardToForm(batch.cards[i]);
+    updateBatchUI();
+}
+
+function updateBatchUI() {
+    const prev = document.getElementById('batchPrevBtn');
+    const next = document.getElementById('batchNextBtn');
+    const counter = document.getElementById('batchCounter');
+
+    prev.style.display = next.style.display = batch.active ? 'block' : 'none';
+    prev.disabled = batch.index <= 0;
+    next.disabled = batch.index >= batch.cards.length - 1;
+    counter.textContent = batch.active ? `第 ${batch.index + 1} / ${batch.cards.length} 張` : '';
+}
+
+function afterDownloadAdvance() {
+    if (!batch.active) return;
+    saveCurrentCard();
+    if (batch.index < batch.cards.length - 1) {
+        goTo(batch.index + 1);
+    } else {
+        alert('已經是最後一張了！');
+    }
+}
+
+function initBatchImport() {
+    const input = document.getElementById('excelInput');
+
+    document.getElementById('importExcelBtn').addEventListener('click', () => {
+        if (batch.active && !confirm('重新匯入會取代目前所有卡片的編輯內容，確定嗎？')) return;
+        input.click();
+    });
+    input.addEventListener('change', e => {
+        const f = e.target.files[0];
+        if (f) handleExcelImport(f);
+        e.target.value = '';
+    });
+
+    document.getElementById('batchPrevBtn').addEventListener('click', () => goTo(batch.index - 1));
+    document.getElementById('batchNextBtn').addEventListener('click', () => goTo(batch.index + 1));
 }
 
 init();
