@@ -1678,6 +1678,30 @@ const COLOR_MAP = {
     '紫': 'purple', '紫色': 'purple', 'purple': 'purple'
 };
 
+const EFFECT_ICON_MAP = {
+    '《休》': 'img/轉倒.png',
+    '《0》': 'img/num_0.png',
+    '《1》': 'img/num_1.png',
+    '《2》': 'img/num_2.png',
+    '《3》': 'img/num_3.png',
+    '《4》': 'img/num_4.png',
+    '《5》': 'img/num_5.png',
+    '《6》': 'img/num_6.png',
+    '《8》': 'img/num_8.png',
+    '《9》': 'img/num_9.png',
+    '《10》': 'img/num_10.png',
+};
+
+function replaceEffectIcons(text) {
+    if (!text) return '';
+    let result = text;
+    Object.keys(EFFECT_ICON_MAP).forEach(marker => {
+        const img = `<img src="${EFFECT_ICON_MAP[marker]}" class="inline-effect-icon">`;
+        result = result.split(marker).join(img);
+    });
+    return result;
+}
+
 function cellText(v) {
     return String(v ?? '').replace(/\r\n/g, '\n').trim();
 }
@@ -1758,7 +1782,6 @@ function rowToCard(row, rowNo, order, warnings, errors) {
     const [number, name, colorTxt, typeTxt, c, s, ap, dp, effect, kwTxt] =
         Array.from({ length: 10 }, (_, i) => cellText(row[i]));
 
-    // 必填欄位檢查
     const missing = [];
     if (colorTxt === '') missing.push('顏色');
     if (typeTxt === '') missing.push('種類');
@@ -1784,7 +1807,7 @@ function rowToCard(row, rowNo, order, warnings, errors) {
         s: toNumber(s, 'S', rowNo, warnings),
         ap: toNumber(ap, 'AP', rowNo, warnings),
         dp: toNumber(dp, 'DP', rowNo, warnings),
-        effect,
+        effect: replaceEffectIcons(effect),
         keywords: parseKeywords(kwTxt, rowNo, warnings),
         custom: { name: '', val: '', checked: false },
         image: null,
