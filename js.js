@@ -276,7 +276,7 @@ const allKeywords = [
 
 const allowedKeywordsByType = {
     character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'toppa', 'combi','free', 'renkei', 'keisho', 'chiryaku', 'ccsakura'],
-    character_nonum: [ 'ex', 'combi','free', 'chiryaku'],
+    character_nonum: [ 'ex','lvlup', 'combi','free', 'chiryaku'],
     event: ['ex', 'break'],
     support: ['ex']
 };
@@ -1683,7 +1683,7 @@ function cellText(v) {
 }
 
 function keywordBaseName(kw) {
-    return kw.name.replace(/\s*[：▶].*$/, '');
+    return kw.name.replace(/\s*[：▶].*$/, '').trim();
 }
 
 function resolveType(typeText, apText, dpText) {
@@ -1708,22 +1708,67 @@ function toNumber(text, label, rowNo, warnings) {
 function parseKeywords(text, rowNo, warnings) {
     const result = [];
     text.split(/[\n;；]+/).map(s => s.trim()).filter(Boolean).forEach(token => {
-        const m = token.match(/^([^:：]+?)\s*[:：]\s*([\s\S]*)$/);
-        const name = (m ? m[1] : token).trim();
-        const val = m ? m[2].trim().replace(/^「/, '').replace(/」$/, '') : '';
-        const kw = allKeywords.find(k => k.id === name || k.name === name || keywordBaseName(k) === name);
+        let name = token;
+        let val = '';
+
+        const colonMatch = token.match(/^([^:：]+?)\s*[:：]\s*([\s\S]*)$/);
+        if (colonMatch) {
+            name = colonMatch[1].trim();
+            val = colonMatch[2].trim();
+        } else {
+            const stripped = token.replace(/^[〔【《（(]+/, '').replace(/[〕】》）+)]+$/, '').trim();
+            const m2 = stripped.match(/^(.+?)(\d+)$/);
+            if (m2) {
+                name = m2[1].trim();
+                val = m2[2];
+            } else {
+                const m3 = stripped.match(/^([^:：]+?)\s*[:：]\s*(.+)$/);
+                if (m3) {
+                    name = m3[1].trim();
+                    val = m3[2].replace(/^「/, '').replace(/」$/, '').trim();
+                } else {
+                    name = stripped;
+                }
+            }
+        }
+
+        const kw = allKeywords.find(k =>
+            k.id === name ||
+            k.name === name ||
+            keywordBaseName(k) === name ||
+            name.startsWith(keywordBaseName(k))
+        );
+
         if (!kw) {
             warnings.push(`第 ${rowNo} 列：找不到關鍵字「${name}」`);
             return;
         }
+
+        if (val === '' && kw.hasNumber) {
+            const num = token.match(/(\d+)/);
+            if (num) val = num[1];
+        }
+
         result.push({ id: kw.id, val });
     });
     return result;
 }
 
-function rowToCard(row, rowNo, order, warnings) {
+function rowToCard(row, rowNo, order, warnings, errors) {
     const [number, name, colorTxt, typeTxt, c, s, ap, dp, effect, kwTxt] =
         Array.from({ length: 10 }, (_, i) => cellText(row[i]));
+
+    // 必填欄位檢查
+    const missing = [];
+    if (colorTxt === '') missing.push('顏色');
+    if (typeTxt === '') missing.push('種類');
+    if (c === '') missing.push('C');
+    if (s === '') missing.push('S');
+
+    if (missing.length > 0) {
+        errors.push(`第 ${rowNo} 列：缺少必填欄位（${missing.join('、')}）`);
+        return null;
+    }
 
     let color = COLOR_MAP[colorTxt.toLowerCase()] || COLOR_MAP[colorTxt];
     if (!color) {
@@ -1752,6 +1797,7 @@ async function handleExcelImport(file) {
         const wb = XLSX.read(await file.arrayBuffer());
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
         const warnings = [];
+        const errors = [];
 
         let headerIdx = rows.findIndex(r => cellText(r[0]).includes('卡號'));
         if (headerIdx < 0) {
@@ -1765,11 +1811,29 @@ async function handleExcelImport(file) {
             const isEmpty = r.every(v => cellText(v) === '');
             const isExample = cellText(r[0]).startsWith('範例') || cellText(r[1]).startsWith('*');
             if (isEmpty || isExample) continue;
-            cards.push(rowToCard(r, i + 1, cards.length, warnings));
+
+            const card = rowToCard(r, i + 1, cards.length, warnings, errors);
+            if (card) cards.push(card);
+        }
+
+        // 顯示錯誤與警告
+        const messages = [];
+        if (errors.length > 0) {
+            const shown = errors.slice(0, 10).join('\n');
+            const more = errors.length > 10 ? `\n…還有 ${errors.length - 10} 則` : '';
+            messages.push(`❌ 錯誤（${errors.length} 列已被跳過）：\n${shown}${more}`);
+        }
+        if (warnings.length > 0) {
+            const shown = warnings.slice(0, 10).join('\n');
+            const more = warnings.length > 10 ? `\n…還有 ${warnings.length - 10} 則` : '';
+            messages.push(`⚠️ 警告：\n${shown}${more}`);
+        }
+        if (messages.length > 0) {
+            alert(messages.join('\n\n'));
         }
 
         if (!cards.length) {
-            alert('找不到有效的卡片資料，請確認檔案格式。');
+            alert('沒有任何有效卡片可匯入，請檢查檔案內容。');
             return;
         }
 
@@ -1784,12 +1848,6 @@ async function handleExcelImport(file) {
         batch.active = true;
         batch.index = -1;
         goTo(0);
-
-        if (warnings.length) {
-            const shown = warnings.slice(0, 10).join('\n');
-            const more = warnings.length > 10 ? `\n…還有 ${warnings.length - 10} 則` : '';
-            alert(`匯入完成，共 ${cards.length} 張。以下項目請確認：\n\n${shown}${more}`);
-        }
     } catch (err) {
         console.error('Excel 匯入失敗:', err);
         alert('讀取 Excel 失敗，請確認檔案格式。');
@@ -1916,7 +1974,16 @@ function afterDownloadAdvance() {
 
 function initBatchImport() {
     const input = document.getElementById('excelInput');
+        document.getElementById('downloadSampleBtn').addEventListener('click', () => {
+            alert('紅字欄位為必填會影響資料帶入時預設的卡片版型，其餘內容可在頁面上新增。');
 
+        const link = document.createElement('a');
+            link.href = encodeURI('匯入範例.xlsx');
+            link.download = '匯入範例.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     document.getElementById('importExcelBtn').addEventListener('click', () => {
         if (batch.active && !confirm('重新匯入會取代目前所有卡片的編輯內容，確定嗎？')) return;
         input.click();
