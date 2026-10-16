@@ -559,6 +559,47 @@ function getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit) {
     }
 }
 
+async function bakeCardImage() {
+    const origBgImg = document.getElementById('bgImg');
+    const origPreview = document.getElementById('cardPreview');
+
+    if (!origBgImg || !origBgImg.src || origBgImg.style.display === 'none' || !origBgImg.naturalWidth) {
+        return null;
+    }
+
+    const boxW = origPreview.offsetWidth;
+    const boxH = origPreview.offsetHeight;
+
+    const scaleFactor = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = boxW * scaleFactor;
+    canvas.height = boxH * scaleFactor;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scaleFactor, scaleFactor);
+
+    const computedStyle = window.getComputedStyle(origBgImg);
+    const objectFit = computedStyle.objectFit || 'cover';
+    const imgNW = origBgImg.naturalWidth;
+    const imgNH = origBgImg.naturalHeight;
+    const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
+
+    ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
+    ctx.rotate((imgState.rotation * Math.PI) / 180);
+    ctx.scale(imgState.scale, imgState.scale);
+    ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
+
+    // 等圖片真的載入完成，避免 html2canvas 提前截圖
+    const dataUrl = canvas.toDataURL('image/png');
+    await new Promise((resolve) => {
+        const test = new Image();
+        test.onload = resolve;
+        test.onerror = resolve;
+        test.src = dataUrl;
+    });
+
+    return dataUrl;
+}
+
 async function downloadCard() {
     downloadBtn.disabled = true;
     downloadBtn.textContent = '輸出中...';
@@ -566,6 +607,8 @@ async function downloadCard() {
     try {
         const cardPreview = document.getElementById('cardPreview');
 
+        // 兩個烘焙都先做完
+        const bakedCardImage = await bakeCardImage();
         const bakedFeatureImages = await bakeAllFeatureSlots();
 
         const canvas = await html2canvas(cardPreview, {
@@ -574,13 +617,21 @@ async function downloadCard() {
             allowTaint: true,
             backgroundColor: null,
             onclone: (clonedDoc) => {
-                const clonedBgImg = clonedDoc.getElementById('bgImg');
-                const origBgImg = document.getElementById('bgImg');
-                const origPreview = document.getElementById('cardPreview');
-
-                if (clonedBgImg && origBgImg && origBgImg.src && origBgImg.style.display !== 'none' && origBgImg.naturalWidth > 0) {
+                // 1. 替換卡圖
+                if (bakedCardImage) {
+                    const clonedBgImg = clonedDoc.getElementById('bgImg');
+                    if (clonedBgImg) {
+                        clonedBgImg.src = bakedCardImage;
+                        clonedBgImg.style.transform = 'none';
+                        clonedBgImg.style.top = '0';
+                        clonedBgImg.style.left = '0';
+                        clonedBgImg.style.width = '100%';
+                        clonedBgImg.style.height = '100%';
+                        clonedBgImg.style.objectFit = 'fill';
+                    }
                 }
 
+                // 2. 替換特徵框
                 const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
                 clonedSlots.forEach((slot, i) => {
                     const baked = bakedFeatureImages[i];
