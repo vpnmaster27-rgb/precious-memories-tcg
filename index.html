@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Precious Memories 卡片自製器</title>
     <meta name="description" content="PM卡片自製器，卡片鍊成陣">
-    <script src="https://cloudflare.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="CSS.css">
 </head>
@@ -15,6 +15,12 @@
     <div id="pageEditor" class="page active">
         <div class="container">
             <div class="form-section">
+                <div class="batch-bar">
+                    <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none">
+                    <button type="button" class="btn" id="downloadSampleBtn">匯入範例下載</button>
+                    <button type="button" class="btn" id="importExcelBtn">批次匯入 Excel</button>
+                    <span id="batchCounter" class="batch-counter"></span>
+                </div>
                 <div class="row">
                     <div class="input-group">
                         <label for="cardColor">顏色</label>
@@ -66,7 +72,37 @@
                         <input type="number" id="statDP" value="0">
                     </div>
                 </div>
-
+                <!-- 特徵欄位 -->
+                <div class="row feature-row">
+                    <div class="input-group">
+                        <label>特徵1</label>
+                        <div class="feature-input-wrap">
+                            <input type="text" id="feature1" class="feature-text-input" data-index="1" placeholder="特徵1">
+                            <button type="button" class="feature-color-btn no-color" data-index="1" title="選擇顏色"></button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>特徵2</label>
+                        <div class="feature-input-wrap">
+                            <input type="text" id="feature2" class="feature-text-input" data-index="2" placeholder="特徵2">
+                            <button type="button" class="feature-color-btn no-color" data-index="2" title="選擇顏色"></button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>特徵3</label>
+                        <div class="feature-input-wrap">
+                            <input type="text" id="feature3" class="feature-text-input" data-index="3" placeholder="特徵3">
+                            <button type="button" class="feature-color-btn no-color" data-index="3" title="選擇顏色"></button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>特徵4</label>
+                        <div class="feature-input-wrap">
+                            <input type="text" id="feature4" class="feature-text-input" data-index="4" placeholder="特徵4">
+                            <button type="button" class="feature-color-btn no-color" data-index="4" title="選擇顏色"></button>
+                        </div>
+                    </div>
+                </div>
                 <div class="input-group">
                     <label>插入時點型效果</label>
                     <div class="tag-btn-group" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
@@ -109,19 +145,44 @@
                 <h3>即時預覽成品</h3>
                 <p style="font-size: 12px; color: #666; margin-top: 4px;">(可在卡片上直接拖拽圖片移動、滾輪縮放圖片)</p>
                 <br>
-                <div class="card-preview" id="cardPreview">
-                    <img id="bgImg" class="card-bg-image" src="" alt="Card Illustration">
-                    <div id="effectBg" class="card-effect-bg"></div>
-                    <img id="uiFrameImg" class="card-ui-frame" src="" alt="Card UI Frame">
-                    <div id="prevCost" class="card-stat-text cost-normal">0</div>
-                    <div id="prevSource" class="card-stat-text source-normal">0</div>
-                    <div id="prevAP" class="card-stat-text stat-ap">0</div>
-                    <div id="prevDP" class="card-stat-text stat-dp">0</div>
-                    <div id="prevName" class="card-name-text name-normal"></div>
-                    <div class="card-effect horizontal-mode" id="prevEffect"></div>
-                    <div id="prevNumber" class="card-number-text number-normal"></div>
+                <div class="card-stage">
+                    <button type="button" id="batchPrevBtn" class="batch-arrow batch-prev" style="display:none">‹</button>
+                        <div class="card-preview" id="cardPreview">
+                            <img id="bgImg" class="card-bg-image" src="" alt="Card Illustration">
+                            <div id="effectBg" class="card-effect-bg"></div>
+                            <img id="uiFrameImg" class="card-ui-frame" src="" alt="Card UI Frame">
+                            <div id="prevCost" class="card-stat-text cost-normal">0</div>
+                            <div id="prevSource" class="card-stat-text source-normal">0</div>
+                            <div id="prevAP" class="card-stat-text stat-ap">0</div>
+                            <div id="prevDP" class="card-stat-text stat-dp">0</div>
+                            <div id="prevName" class="card-name-text name-normal"></div>
+                            <div class="card-effect horizontal-mode" id="prevEffect"></div>
+                            <div id="prevNumber" class="card-number-text number-normal"></div>
+                            <div id="featureBoxes" class="card-feature-boxes">
+                            <div class="feature-box-slot" data-index="1">
+                                <div class="feature-box-bg"></div>
+                                <img src="img/特徵.png" alt="特徵1">
+                                <span class="feature-box-text"></span>
+                            </div>
+                            <div class="feature-box-slot" data-index="2">
+                                <div class="feature-box-bg"></div>
+                                <img src="img/特徵.png" alt="特徵2">
+                                <span class="feature-box-text"></span>
+                            </div>
+                            <div class="feature-box-slot" data-index="3">
+                                <div class="feature-box-bg"></div>
+                                <img src="img/特徵.png" alt="特徵3">
+                                <span class="feature-box-text"></span>
+                            </div>
+                            <div class="feature-box-slot" data-index="4">
+                                <div class="feature-box-bg"></div>
+                                <img src="img/特徵.png" alt="特徵4">
+                                <span class="feature-box-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="batchNextBtn" class="batch-arrow batch-next" style="display:none">›</button>
                 </div>
-
                 <div class="preview-actions">
                     <input type="file" id="imageInput" accept="image/*" style="display: none;">
                     <button type="button" class="btn btn-upload" id="uploadBtn">上傳圖片</button>
@@ -272,6 +333,7 @@
             </div>
         </div>
     </div>
+    <div id="featurePalette" class="feature-palette" style="display:none;"></div>
     <script src="js.js"></script>
 </body>
 </html>
