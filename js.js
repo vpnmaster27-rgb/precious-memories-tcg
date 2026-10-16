@@ -566,6 +566,8 @@ async function downloadCard() {
     try {
         const cardPreview = document.getElementById('cardPreview');
 
+        const bakedFeatureImages = await bakeAllFeatureSlots();
+
         const canvas = await html2canvas(cardPreview, {
             scale: 2,
             useCORS: true,
@@ -577,38 +579,20 @@ async function downloadCard() {
                 const origPreview = document.getElementById('cardPreview');
 
                 if (clonedBgImg && origBgImg && origBgImg.src && origBgImg.style.display !== 'none' && origBgImg.naturalWidth > 0) {
-                    const boxW = origPreview.offsetWidth;
-                    const boxH = origPreview.offsetHeight;
-
-                    const scaleFactor = 2;
-                    const bakeCanvas = document.createElement('canvas');
-                    bakeCanvas.width = boxW * scaleFactor;
-                    bakeCanvas.height = boxH * scaleFactor;
-                    const ctx = bakeCanvas.getContext('2d');
-
-                    ctx.scale(scaleFactor, scaleFactor);
-
-                    const computedStyle = window.getComputedStyle(origBgImg);
-                    const objectFit = computedStyle.objectFit || 'cover';
-
-                    const imgNW = origBgImg.naturalWidth;
-                    const imgNH = origBgImg.naturalHeight;
-                    const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
-
-                    ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
-                    ctx.rotate((imgState.rotation * Math.PI) / 180);
-                    ctx.scale(imgState.scale, imgState.scale);
-
-                    ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
-
-                    clonedBgImg.src = bakeCanvas.toDataURL('image/png');
-                    clonedBgImg.style.transform = 'none';
-                    clonedBgImg.style.top = '0';
-                    clonedBgImg.style.left = '0';
-                    clonedBgImg.style.width = '100%';
-                    clonedBgImg.style.height = '100%';
-                    clonedBgImg.style.objectFit = 'fill';
                 }
+
+                const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
+                clonedSlots.forEach((slot, i) => {
+                    const baked = bakedFeatureImages[i];
+                    if (!baked || !baked.dataUrl) return;
+                    slot.innerHTML = '';
+                    const img = clonedDoc.createElement('img');
+                    img.src = baked.dataUrl;
+                    img.style.display = 'block';
+                    img.style.width = baked.width + 'px';
+                    img.style.height = baked.height + 'px';
+                    slot.appendChild(img);
+                });
             }
         });
 
@@ -629,7 +613,7 @@ async function downloadCard() {
         setTimeout(afterDownloadAdvance, 0);
     } catch (err) {
         console.error('下載圖片失敗:', err);
-        alert('下載失敗，請嘗試重新整理頁面後再試一次。');
+        alert('下載失敗：' + (err.message || err) + '\n請按 F12 查看 Console 詳細訊息。');
     } finally {
         downloadBtn.disabled = false;
         downloadBtn.textContent = '下載卡圖';
@@ -961,6 +945,7 @@ function init() {
     initGalleryFilters();
     initCardModal();
     initBatchImport();
+    initFeatureControls();
 }
 
 function handleNumberState() {
@@ -2019,6 +2004,198 @@ function initBatchImport() {
 
     document.getElementById('batchPrevBtn').addEventListener('click', () => goTo(batch.index - 1));
     document.getElementById('batchNextBtn').addEventListener('click', () => goTo(batch.index + 1));
+}
+
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('圖片載入失敗: ' + src));
+        img.src = src;
+    });
+}
+
+async function bakeFeatureSlot(slot) {
+    const index = slot.dataset.index;
+    const state = featureState[index];
+    const imgEl = slot.querySelector('img');
+    if (!imgEl || !imgEl.complete || !imgEl.naturalWidth) return null;
+
+    const slotRect = slot.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+    const w = slotRect.width;
+    const h = slotRect.height;
+    if (w === 0 || h === 0) return null;
+
+    const imgLeft = imgRect.left - slotRect.left;
+    const imgTop = imgRect.top - slotRect.top;
+    const imgW = imgRect.width;
+    const imgH = imgRect.height;
+
+    const scale = 3;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    const baseImg = await loadImage(imgEl.src);
+    ctx.drawImage(baseImg, imgLeft, imgTop, imgW, imgH);
+
+    if (state.text.trim() !== '' && state.color !== '') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = state.color;
+        ctx.fillRect(imgLeft, imgTop, imgW, imgH);
+        ctx.restore();
+    }
+
+    if (state.text.trim() !== '') {
+        const fontSize = 11;
+        ctx.font = `900 ${fontSize}px "Microsoft JhengHei", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const cx = w / 2 + 0;   // 水平偏移：正數往右，負數往左
+        const cy = h / 2 + -5;   // 垂直偏移：正數往下，負數往上
+
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#fff';
+        ctx.strokeText(state.text, cx, cy);
+
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        ctx.fillStyle = state.color || '#fff';
+        ctx.fillText(state.text, cx, cy);
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    return { dataUrl: canvas.toDataURL('image/png'), width: w, height: h };
+}
+
+async function bakeAllFeatureSlots() {
+    const slots = document.querySelectorAll('.feature-box-slot');
+    const results = [];
+    for (const slot of slots) {
+        try {
+            results.push(await bakeFeatureSlot(slot));
+        } catch (e) {
+            console.warn('特徵框合成失敗', e);
+            results.push(null);
+        }
+    }
+    return results;
+}
+
+/* ================= 特徵顏色控制 ================= */
+const FEATURE_COLORS = [
+    { value: '',        label: '無色' },
+    { value: '#e53935', label: '赤' },
+    { value: '#1e88e5', label: '青' },
+    { value: '#43a047', label: '緑' },
+    { value: '#fdd835', label: '黄' },
+    { value: '#8e24aa', label: '紫' },
+    { value: '#ffffff', label: '白' },
+    { value: '#000000', label: '黒' },
+];
+
+const featureState = {
+    '1': { color: '', text: '' },
+    '2': { color: '', text: '' },
+    '3': { color: '', text: '' },
+    '4': { color: '', text: '' },
+};
+
+let paletteTargetIndex = null;
+
+function initFeatureControls() {
+    document.querySelectorAll('.feature-text-input').forEach(input => {
+        input.addEventListener('input', () => {
+            const i = input.dataset.index;
+            featureState[i].text = input.value;
+            updateFeatureBox(i);
+        });
+    });
+
+    document.querySelectorAll('.feature-color-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            paletteTargetIndex = btn.dataset.index;
+            showFeaturePalette(btn);
+        });
+    });
+
+    document.addEventListener('click', hideFeaturePalette);
+}
+
+function showFeaturePalette(anchor) {
+    const palette = document.getElementById('featurePalette');
+    if (!palette) return;
+    palette.innerHTML = '';
+
+    FEATURE_COLORS.forEach(c => {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'swatch' + (c.value === '' ? ' no-color' : '');
+        if (c.value !== '') sw.style.background = c.value;
+        sw.title = c.label;
+        sw.addEventListener('click', (e) => {
+            e.stopPropagation();
+            applyFeatureColor(paletteTargetIndex, c.value);
+            hideFeaturePalette();
+        });
+        palette.appendChild(sw);
+    });
+
+    const rect = anchor.getBoundingClientRect();
+    palette.style.display = 'flex';
+    palette.style.top = (rect.bottom + 4) + 'px';
+    palette.style.left = rect.left + 'px';
+
+    const pw = palette.offsetWidth;
+    if (rect.left + pw > window.innerWidth - 8) {
+        palette.style.left = (window.innerWidth - pw - 8) + 'px';
+    }
+}
+
+function hideFeaturePalette() {
+    const palette = document.getElementById('featurePalette');
+    if (palette) palette.style.display = 'none';
+    paletteTargetIndex = null;
+}
+
+function applyFeatureColor(index, color) {
+    featureState[index].color = color;
+    const btn = document.querySelector(`.feature-color-btn[data-index="${index}"]`);
+    if (btn) {
+        btn.classList.toggle('no-color', color === '');
+        btn.style.background = color || '';
+    }
+    updateFeatureBox(index);
+}
+
+function updateFeatureBox(index) {
+    const slot = document.querySelector(`.feature-box-slot[data-index="${index}"]`);
+    if (!slot) return;
+    const bg = slot.querySelector('.feature-box-bg');
+    const textEl = slot.querySelector('.feature-box-text');
+    const state = featureState[index];
+
+    // 只有「有文字 + 有選色」才填色
+    const shouldFill = state.text.trim() !== '' && state.color !== '';
+    bg.style.background = shouldFill ? state.color : 'transparent';
+
+    if (textEl) {
+        textEl.textContent = state.text;
+        textEl.style.color = shouldFill ? state.color : '#fff';
+    }
 }
 
 init();
