@@ -335,5 +335,16 @@
     </div>
     <div id="featurePalette" class="feature-palette" style="display:none;"></div>
     <script src="js.js"></script>
+
+<script>
+  const LOG_URL = "http://localhost:8080/log";   // 本機測試用，之後會換成部署後的網址
+  fetch(LOG_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: location.pathname, ref: document.referrer }),
+    keepalive: true,
+  }).catch(() => {});   // 後端掛掉時不要影響網站本身
+</script>
+
 </body>
 </html>
