@@ -276,7 +276,7 @@ const allKeywords = [
 
 const allowedKeywordsByType = {
     character_num: ['kyoin', 'gaman', 'ex', 'active', 'lvlup', 'tennen', 'toppa', 'combi','free', 'renkei', 'keisho', 'chiryaku', 'ccsakura'],
-    character_nonum: [ 'ex','lvlup', 'combi','free', 'chiryaku'],
+    character_nonum: [ 'ex', 'lvlup','combi','free', 'chiryaku'],
     event: ['ex', 'break'],
     support: ['ex']
 };
