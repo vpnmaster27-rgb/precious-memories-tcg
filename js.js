@@ -566,6 +566,8 @@ async function downloadCard() {
     try {
         const cardPreview = document.getElementById('cardPreview');
 
+        const bakedFeatureImages = await bakeAllFeatureSlots();
+
         const canvas = await html2canvas(cardPreview, {
             scale: 2,
             useCORS: true,
@@ -577,38 +579,20 @@ async function downloadCard() {
                 const origPreview = document.getElementById('cardPreview');
 
                 if (clonedBgImg && origBgImg && origBgImg.src && origBgImg.style.display !== 'none' && origBgImg.naturalWidth > 0) {
-                    const boxW = origPreview.offsetWidth;
-                    const boxH = origPreview.offsetHeight;
-
-                    const scaleFactor = 2;
-                    const bakeCanvas = document.createElement('canvas');
-                    bakeCanvas.width = boxW * scaleFactor;
-                    bakeCanvas.height = boxH * scaleFactor;
-                    const ctx = bakeCanvas.getContext('2d');
-
-                    ctx.scale(scaleFactor, scaleFactor);
-
-                    const computedStyle = window.getComputedStyle(origBgImg);
-                    const objectFit = computedStyle.objectFit || 'cover';
-
-                    const imgNW = origBgImg.naturalWidth;
-                    const imgNH = origBgImg.naturalHeight;
-                    const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
-
-                    ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
-                    ctx.rotate((imgState.rotation * Math.PI) / 180);
-                    ctx.scale(imgState.scale, imgState.scale);
-
-                    ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
-
-                    clonedBgImg.src = bakeCanvas.toDataURL('image/png');
-                    clonedBgImg.style.transform = 'none';
-                    clonedBgImg.style.top = '0';
-                    clonedBgImg.style.left = '0';
-                    clonedBgImg.style.width = '100%';
-                    clonedBgImg.style.height = '100%';
-                    clonedBgImg.style.objectFit = 'fill';
                 }
+
+                const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
+                clonedSlots.forEach((slot, i) => {
+                    const baked = bakedFeatureImages[i];
+                    if (!baked || !baked.dataUrl) return;
+                    slot.innerHTML = '';
+                    const img = clonedDoc.createElement('img');
+                    img.src = baked.dataUrl;
+                    img.style.display = 'block';
+                    img.style.width = baked.width + 'px';
+                    img.style.height = baked.height + 'px';
+                    slot.appendChild(img);
+                });
             }
         });
 
@@ -626,9 +610,10 @@ async function downloadCard() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(afterDownloadAdvance, 0);
     } catch (err) {
         console.error('下載圖片失敗:', err);
-        alert('下載失敗，請嘗試重新整理頁面後再試一次。');
+        alert('下載失敗：' + (err.message || err) + '\n請按 F12 查看 Console 詳細訊息。');
     } finally {
         downloadBtn.disabled = false;
         downloadBtn.textContent = '下載卡圖';
@@ -959,7 +944,8 @@ function init() {
     renderGallerySeriesList();
     initGalleryFilters();
     initCardModal();
-
+    initBatchImport();
+    initFeatureControls();
 }
 
 function handleNumberState() {
@@ -1664,6 +1650,552 @@ function initPageNavigation() {
         }
         window.scrollTo(0, 0);
     });
+}
+
+/* ================= 批次匯入 ================= */
+const batch = { cards: [], index: -1, active: false };
+
+const COLOR_MAP = {
+    '赤': 'red', '紅': 'red', '紅色': 'red', 'red': 'red',
+    '青': 'blue', '藍': 'blue', '藍色': 'blue', 'blue': 'blue',
+    '緑': 'green', '綠': 'green', '綠色': 'green', 'green': 'green',
+    '黄': 'yellow', '黃': 'yellow', '黃色': 'yellow', 'yellow': 'yellow',
+    '紫': 'purple', '紫色': 'purple', 'purple': 'purple'
+};
+
+const EFFECT_ICON_MAP = {
+    '《休》': 'img/轉倒.png',
+    '《0》': 'img/num_0.png',
+    '《1》': 'img/num_1.png',
+    '《2》': 'img/num_2.png',
+    '《3》': 'img/num_3.png',
+    '《4》': 'img/num_4.png',
+    '《5》': 'img/num_5.png',
+    '《6》': 'img/num_6.png',
+    '《8》': 'img/num_8.png',
+    '《9》': 'img/num_9.png',
+    '《10》': 'img/num_10.png',
+};
+
+function replaceEffectIcons(text) {
+    if (!text) return '';
+    let result = text;
+    Object.keys(EFFECT_ICON_MAP).forEach(marker => {
+        const img = `<img src="${EFFECT_ICON_MAP[marker]}" class="inline-effect-icon">`;
+        result = result.split(marker).join(img);
+    });
+    return result;
+}
+
+function cellText(v) {
+    return String(v ?? '').replace(/\r\n/g, '\n').trim();
+}
+
+function keywordBaseName(kw) {
+    return kw.name.replace(/\s*[：▶].*$/, '').trim();
+}
+
+function resolveType(typeText, apText, dpText) {
+    const t = typeText.toLowerCase();
+    if (/イベント|事件|event/.test(t)) return 'event';
+    if (/サポート|裝備|装備|support/.test(t)) return 'support';
+    if (/無數字|无数字|nonum/.test(t)) return 'character_nonum';
+    if (/有數字|character_num/.test(t)) return 'character_num';
+    return (apText !== '' || dpText !== '') ? 'character_num' : 'character_nonum';
+}
+
+function toNumber(text, label, rowNo, warnings) {
+    if (text === '') return 0;
+    const n = Number(text);
+    if (Number.isNaN(n)) {
+        warnings.push(`第 ${rowNo} 列：${label}「${text}」不是數字，已改為 0`);
+        return 0;
+    }
+    return n;
+}
+
+function parseKeywords(text, rowNo, warnings) {
+    const result = [];
+    text.split(/[\n;；]+/).map(s => s.trim()).filter(Boolean).forEach(token => {
+        let name = token;
+        let val = '';
+
+        const colonMatch = token.match(/^([^:：]+?)\s*[:：]\s*([\s\S]*)$/);
+        if (colonMatch) {
+            name = colonMatch[1].trim();
+            val = colonMatch[2].trim();
+        } else {
+            const stripped = token.replace(/^[〔【《（(]+/, '').replace(/[〕】》）+)]+$/, '').trim();
+            const m2 = stripped.match(/^(.+?)(\d+)$/);
+            if (m2) {
+                name = m2[1].trim();
+                val = m2[2];
+            } else {
+                const m3 = stripped.match(/^([^:：]+?)\s*[:：]\s*(.+)$/);
+                if (m3) {
+                    name = m3[1].trim();
+                    val = m3[2].replace(/^「/, '').replace(/」$/, '').trim();
+                } else {
+                    name = stripped;
+                }
+            }
+        }
+
+        const kw = allKeywords.find(k =>
+            k.id === name ||
+            k.name === name ||
+            keywordBaseName(k) === name ||
+            name.startsWith(keywordBaseName(k))
+        );
+
+        if (!kw) {
+            warnings.push(`第 ${rowNo} 列：找不到關鍵字「${name}」`);
+            return;
+        }
+
+        if (val === '' && kw.hasNumber) {
+            const num = token.match(/(\d+)/);
+            if (num) val = num[1];
+        }
+
+        result.push({ id: kw.id, val });
+    });
+    return result;
+}
+
+function rowToCard(row, rowNo, order, warnings, errors) {
+    const [number, name, colorTxt, typeTxt, c, s, ap, dp, effect, kwTxt] =
+        Array.from({ length: 10 }, (_, i) => cellText(row[i]));
+
+    const missing = [];
+    if (colorTxt === '') missing.push('顏色');
+    if (typeTxt === '') missing.push('種類');
+    if (c === '') missing.push('C');
+    if (s === '') missing.push('S');
+
+    if (missing.length > 0) {
+        errors.push(`第 ${rowNo} 列：缺少必填欄位（${missing.join('、')}）`);
+        return null;
+    }
+
+    let color = COLOR_MAP[colorTxt.toLowerCase()] || COLOR_MAP[colorTxt];
+    if (!color) {
+        warnings.push(`第 ${rowNo} 列：顏色「${colorTxt}」編輯器不支援，已先用紅色`);
+        color = 'red';
+    }
+
+    return {
+        order,
+        number, name, color,
+        type: resolveType(typeTxt, ap, dp),
+        c: toNumber(c, 'C', rowNo, warnings),
+        s: toNumber(s, 'S', rowNo, warnings),
+        ap: toNumber(ap, 'AP', rowNo, warnings),
+        dp: toNumber(dp, 'DP', rowNo, warnings),
+        effect: replaceEffectIcons(effect),
+        keywords: parseKeywords(kwTxt, rowNo, warnings),
+        custom: { name: '', val: '', checked: false },
+        image: null,
+        imgState: null
+    };
+}
+
+async function handleExcelImport(file) {
+    try {
+        const wb = XLSX.read(await file.arrayBuffer());
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+        const warnings = [];
+        const errors = [];
+
+        let headerIdx = rows.findIndex(r => cellText(r[0]).includes('卡號'));
+        if (headerIdx < 0) {
+            headerIdx = 1;
+            warnings.push('找不到標題列（A 欄含「卡號」），已預設從第 3 列開始讀取');
+        }
+
+        const cards = [];
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const r = rows[i];
+            const isEmpty = r.every(v => cellText(v) === '');
+            const isExample = cellText(r[0]).startsWith('範例') || cellText(r[1]).startsWith('*');
+            if (isEmpty || isExample) continue;
+
+            const card = rowToCard(r, i + 1, cards.length, warnings, errors);
+            if (card) cards.push(card);
+        }
+
+        // 顯示錯誤與警告
+        const messages = [];
+        if (errors.length > 0) {
+            const shown = errors.slice(0, 10).join('\n');
+            const more = errors.length > 10 ? `\n…還有 ${errors.length - 10} 則` : '';
+            messages.push(`❌ 錯誤（${errors.length} 列已被跳過）：\n${shown}${more}`);
+        }
+        if (warnings.length > 0) {
+            const shown = warnings.slice(0, 10).join('\n');
+            const more = warnings.length > 10 ? `\n…還有 ${warnings.length - 10} 則` : '';
+            messages.push(`⚠️ 警告：\n${shown}${more}`);
+        }
+        if (messages.length > 0) {
+            alert(messages.join('\n\n'));
+        }
+
+        if (!cards.length) {
+            alert('沒有任何有效卡片可匯入，請檢查檔案內容。');
+            return;
+        }
+
+        cards.sort((a, b) => {
+            if (!a.number && !b.number) return a.order - b.order;
+            if (!a.number) return 1;
+            if (!b.number) return -1;
+            return a.number.localeCompare(b.number, undefined, { numeric: true }) || a.order - b.order;
+        });
+
+        batch.cards = cards;
+        batch.active = true;
+        batch.index = -1;
+        goTo(0);
+    } catch (err) {
+        console.error('Excel 匯入失敗:', err);
+        alert('讀取 Excel 失敗，請確認檔案格式。');
+    }
+}
+
+function setInputValue(el, val) {
+    if (!el) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function snapshotForm() {
+    const keywords = [];
+    keywordListContainer.querySelectorAll('input[type="checkbox"][data-id]:checked').forEach(cb => {
+        const id = cb.dataset.id;
+        const inp = keywordListContainer.querySelector(`input[data-for-kw="${id}"]`);
+        keywords.push({ id, val: inp ? inp.value : '' });
+    });
+
+    const hasImg = bgImg.style.display !== 'none' && bgImg.getAttribute('src');
+    return {
+        color: cardColorInput.value,
+        type: cardTypeInput.value,
+        name: cardNameInput.value,
+        number: cardNumberInput.value,
+        c: statCInput.value,
+        s: statSInput.value,
+        ap: statAPInput.value,
+        dp: statDPInput.value,
+        effect: cardEffectInput.value,
+        keywords,
+        custom: {
+            name: document.getElementById('customKwName')?.value || '',
+            val: document.getElementById('customKwVal')?.value || '',
+            checked: !!document.getElementById('customKwCheckbox')?.checked
+        },
+        image: hasImg ? bgImg.src : null,
+        imgState: {
+            scale: imgState.scale,
+            translateX: imgState.translateX,
+            translateY: imgState.translateY,
+            rotation: imgState.rotation
+        }
+    };
+}
+
+function saveCurrentCard() {
+    if (!batch.active || batch.index < 0) return;
+    Object.assign(batch.cards[batch.index], snapshotForm());
+}
+
+function loadCardToForm(card) {
+    cardColorInput.value = card.color;
+    cardTypeInput.value = card.type;
+    cardNameInput.value = card.name;
+    cardNumberInput.value = card.number;
+    statCInput.value = card.c;
+    statSInput.value = card.s;
+    statAPInput.value = card.ap;
+    statDPInput.value = card.dp;
+    cardEffectInput.value = card.effect;
+    currentTagState.group1 = null;
+    currentTagState.group2 = null;
+
+    renderKeywords();
+    handleNumberState();
+
+    card.keywords.forEach(({ id, val }) => {
+        const cb = keywordListContainer.querySelector(`input[data-id="${id}"]`);
+        if (!cb) return;
+        cb.checked = true;
+        handleKeywordChange({ target: cb });
+        const inp = keywordListContainer.querySelector(`input[data-for-kw="${id}"]`);
+        if (inp && val !== '') setInputValue(inp, val);
+    });
+
+    const custom = card.custom || { name: '', val: '', checked: false };
+    setInputValue(document.getElementById('customKwName'), custom.name);
+    setInputValue(document.getElementById('customKwVal'), custom.val);
+    document.getElementById('customKwCheckbox').checked = !!custom.checked;
+
+    if (card.image) {
+        bgImg.src = card.image;
+        bgImg.style.display = 'block';
+        Object.assign(imgState, card.imgState || { scale: 1, translateX: 0, translateY: 0, rotation: 0 });
+        imgState.isDragging = false;
+        applyImageTransform();
+    } else {
+        clearImage();
+    }
+
+    updatePreview();
+}
+
+function goTo(i) {
+    if (!batch.active || i < 0 || i >= batch.cards.length) return;
+    saveCurrentCard();
+    batch.index = i;
+    loadCardToForm(batch.cards[i]);
+    updateBatchUI();
+}
+
+function updateBatchUI() {
+    const prev = document.getElementById('batchPrevBtn');
+    const next = document.getElementById('batchNextBtn');
+    const counter = document.getElementById('batchCounter');
+
+    prev.style.display = next.style.display = batch.active ? 'block' : 'none';
+    prev.disabled = batch.index <= 0;
+    next.disabled = batch.index >= batch.cards.length - 1;
+    counter.textContent = batch.active ? `第 ${batch.index + 1} / ${batch.cards.length} 張` : '';
+}
+
+function afterDownloadAdvance() {
+    if (!batch.active) return;
+    saveCurrentCard();
+    if (batch.index < batch.cards.length - 1) {
+        goTo(batch.index + 1);
+    } else {
+        alert('已經是最後一張了！');
+    }
+}
+
+function initBatchImport() {
+    const input = document.getElementById('excelInput');
+        document.getElementById('downloadSampleBtn').addEventListener('click', () => {
+            alert('紅字欄位為必填會影響資料帶入時預設的卡片版型，其餘內容可在頁面上新增。');
+
+        const link = document.createElement('a');
+            link.href = encodeURI('匯入範例.xlsx');
+            link.download = '匯入範例.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    document.getElementById('importExcelBtn').addEventListener('click', () => {
+        if (batch.active && !confirm('重新匯入會取代目前所有卡片的編輯內容，確定嗎？')) return;
+        input.click();
+    });
+    input.addEventListener('change', e => {
+        const f = e.target.files[0];
+        if (f) handleExcelImport(f);
+        e.target.value = '';
+    });
+
+    document.getElementById('batchPrevBtn').addEventListener('click', () => goTo(batch.index - 1));
+    document.getElementById('batchNextBtn').addEventListener('click', () => goTo(batch.index + 1));
+}
+
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('圖片載入失敗: ' + src));
+        img.src = src;
+    });
+}
+
+async function bakeFeatureSlot(slot) {
+    const index = slot.dataset.index;
+    const state = featureState[index];
+    const imgEl = slot.querySelector('img');
+    if (!imgEl || !imgEl.complete || !imgEl.naturalWidth) return null;
+
+    const slotRect = slot.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+    const w = slotRect.width;
+    const h = slotRect.height;
+    if (w === 0 || h === 0) return null;
+
+    const imgLeft = imgRect.left - slotRect.left;
+    const imgTop = imgRect.top - slotRect.top;
+    const imgW = imgRect.width;
+    const imgH = imgRect.height;
+
+    const scale = 3;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    const baseImg = await loadImage(imgEl.src);
+    ctx.drawImage(baseImg, imgLeft, imgTop, imgW, imgH);
+
+    if (state.text.trim() !== '' && state.color !== '') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = state.color;
+        ctx.fillRect(imgLeft, imgTop, imgW, imgH);
+        ctx.restore();
+    }
+
+    if (state.text.trim() !== '') {
+        const fontSize = 11;
+        ctx.font = `900 ${fontSize}px "Microsoft JhengHei", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const cx = w / 2 + 0;   // 水平偏移：正數往右，負數往左
+        const cy = h / 2 + -5;   // 垂直偏移：正數往下，負數往上
+
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#fff';
+        ctx.strokeText(state.text, cx, cy);
+
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        ctx.fillStyle = state.color || '#fff';
+        ctx.fillText(state.text, cx, cy);
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    return { dataUrl: canvas.toDataURL('image/png'), width: w, height: h };
+}
+
+async function bakeAllFeatureSlots() {
+    const slots = document.querySelectorAll('.feature-box-slot');
+    const results = [];
+    for (const slot of slots) {
+        try {
+            results.push(await bakeFeatureSlot(slot));
+        } catch (e) {
+            console.warn('特徵框合成失敗', e);
+            results.push(null);
+        }
+    }
+    return results;
+}
+
+/* ================= 特徵顏色控制 ================= */
+const FEATURE_COLORS = [
+    { value: '',        label: '無色' },
+    { value: '#e53935', label: '赤' },
+    { value: '#1e88e5', label: '青' },
+    { value: '#43a047', label: '緑' },
+    { value: '#fdd835', label: '黄' },
+    { value: '#8e24aa', label: '紫' },
+    { value: '#ffffff', label: '白' },
+    { value: '#000000', label: '黒' },
+];
+
+const featureState = {
+    '1': { color: '', text: '' },
+    '2': { color: '', text: '' },
+    '3': { color: '', text: '' },
+    '4': { color: '', text: '' },
+};
+
+let paletteTargetIndex = null;
+
+function initFeatureControls() {
+    document.querySelectorAll('.feature-text-input').forEach(input => {
+        input.addEventListener('input', () => {
+            const i = input.dataset.index;
+            featureState[i].text = input.value;
+            updateFeatureBox(i);
+        });
+    });
+
+    document.querySelectorAll('.feature-color-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            paletteTargetIndex = btn.dataset.index;
+            showFeaturePalette(btn);
+        });
+    });
+
+    document.addEventListener('click', hideFeaturePalette);
+}
+
+function showFeaturePalette(anchor) {
+    const palette = document.getElementById('featurePalette');
+    if (!palette) return;
+    palette.innerHTML = '';
+
+    FEATURE_COLORS.forEach(c => {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'swatch' + (c.value === '' ? ' no-color' : '');
+        if (c.value !== '') sw.style.background = c.value;
+        sw.title = c.label;
+        sw.addEventListener('click', (e) => {
+            e.stopPropagation();
+            applyFeatureColor(paletteTargetIndex, c.value);
+            hideFeaturePalette();
+        });
+        palette.appendChild(sw);
+    });
+
+    const rect = anchor.getBoundingClientRect();
+    palette.style.display = 'flex';
+    palette.style.top = (rect.bottom + 4) + 'px';
+    palette.style.left = rect.left + 'px';
+
+    const pw = palette.offsetWidth;
+    if (rect.left + pw > window.innerWidth - 8) {
+        palette.style.left = (window.innerWidth - pw - 8) + 'px';
+    }
+}
+
+function hideFeaturePalette() {
+    const palette = document.getElementById('featurePalette');
+    if (palette) palette.style.display = 'none';
+    paletteTargetIndex = null;
+}
+
+function applyFeatureColor(index, color) {
+    featureState[index].color = color;
+    const btn = document.querySelector(`.feature-color-btn[data-index="${index}"]`);
+    if (btn) {
+        btn.classList.toggle('no-color', color === '');
+        btn.style.background = color || '';
+    }
+    updateFeatureBox(index);
+}
+
+function updateFeatureBox(index) {
+    const slot = document.querySelector(`.feature-box-slot[data-index="${index}"]`);
+    if (!slot) return;
+    const bg = slot.querySelector('.feature-box-bg');
+    const textEl = slot.querySelector('.feature-box-text');
+    const state = featureState[index];
+
+    // 只有「有文字 + 有選色」才填色
+    const shouldFill = state.text.trim() !== '' && state.color !== '';
+    bg.style.background = shouldFill ? state.color : 'transparent';
+
+    if (textEl) {
+        textEl.textContent = state.text;
+        textEl.style.color = shouldFill ? state.color : '#fff';
+    }
 }
 
 init();
