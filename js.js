@@ -600,54 +600,67 @@ async function bakeCardImage() {
     return dataUrl;
 }
 
+function waitForImage(imgElement) {
+    return new Promise((resolve) => {
+        if (imgElement.complete && imgElement.naturalWidth > 0) {
+            resolve();
+        } else {
+            imgElement.onload = resolve;
+            imgElement.onerror = resolve;
+        }
+    });
+}
+
+async function generateCardImageData() {
+    const cardPreview = document.getElementById('cardPreview');
+    
+    await waitForImage(bgImg);
+
+    const bakedCardImage = await bakeCardImage();
+    const bakedFeatureImages = await bakeAllFeatureSlots();
+
+    const canvas = await html2canvas(cardPreview, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        onclone: (clonedDoc) => {
+            if (bakedCardImage) {
+                const clonedBgImg = clonedDoc.getElementById('bgImg');
+                if (clonedBgImg) {
+                    clonedBgImg.src = bakedCardImage;
+                    clonedBgImg.style.transform = 'none';
+                    clonedBgImg.style.top = '0';
+                    clonedBgImg.style.left = '0';
+                    clonedBgImg.style.width = '100%';
+                    clonedBgImg.style.height = '100%';
+                    clonedBgImg.style.objectFit = 'fill';
+                }
+            }
+
+            const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
+            clonedSlots.forEach((slot, i) => {
+                const baked = bakedFeatureImages[i];
+                if (!baked || !baked.dataUrl) return;
+                slot.innerHTML = '';
+                const img = clonedDoc.createElement('img');
+                img.src = baked.dataUrl;
+                img.style.display = 'block';
+                img.style.width = baked.width + 'px';
+                img.style.height = baked.height + 'px';
+                slot.appendChild(img);
+            });
+        }
+    });
+    return canvas.toDataURL('image/png');
+}
+
 async function downloadCard() {
     downloadBtn.disabled = true;
     downloadBtn.textContent = '輸出中...';
 
     try {
-        const cardPreview = document.getElementById('cardPreview');
-
-        // 兩個烘焙都先做完
-        const bakedCardImage = await bakeCardImage();
-        const bakedFeatureImages = await bakeAllFeatureSlots();
-
-        const canvas = await html2canvas(cardPreview, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: null,
-            onclone: (clonedDoc) => {
-                // 1. 替換卡圖
-                if (bakedCardImage) {
-                    const clonedBgImg = clonedDoc.getElementById('bgImg');
-                    if (clonedBgImg) {
-                        clonedBgImg.src = bakedCardImage;
-                        clonedBgImg.style.transform = 'none';
-                        clonedBgImg.style.top = '0';
-                        clonedBgImg.style.left = '0';
-                        clonedBgImg.style.width = '100%';
-                        clonedBgImg.style.height = '100%';
-                        clonedBgImg.style.objectFit = 'fill';
-                    }
-                }
-
-                // 2. 替換特徵框
-                const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
-                clonedSlots.forEach((slot, i) => {
-                    const baked = bakedFeatureImages[i];
-                    if (!baked || !baked.dataUrl) return;
-                    slot.innerHTML = '';
-                    const img = clonedDoc.createElement('img');
-                    img.src = baked.dataUrl;
-                    img.style.display = 'block';
-                    img.style.width = baked.width + 'px';
-                    img.style.height = baked.height + 'px';
-                    slot.appendChild(img);
-                });
-            }
-        });
-
-        const imageUrl = canvas.toDataURL('image/png');
+        const imageUrl = await generateCardImageData();
         const cardName = cardNameInput.value.trim() || 'CustomCard';
         const fileName = `${cardName}_${Date.now()}.png`;
 
@@ -668,6 +681,57 @@ async function downloadCard() {
     } finally {
         downloadBtn.disabled = false;
         downloadBtn.textContent = '下載卡圖';
+    }
+}
+
+async function exportAllCards() {
+    if (!batch.active || batch.cards.length === 0) return;
+
+    const total = batch.cards.length;
+    if (!confirm(`即將依序下載 ${total} 張卡片，下載過程中請不要操作網頁，確定嗎？`)) return;
+
+    const exportBtn = document.getElementById('exportAllBtn');
+    exportBtn.disabled = true;
+    
+    const prevBtn = document.getElementById('batchPrevBtn');
+    const nextBtn = document.getElementById('batchNextBtn');
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+
+    try {
+        saveCurrentCard();
+
+        for (let i = 0; i < total; i++) {
+            exportBtn.textContent = `匯出中 (${i + 1}/${total})...`;
+            
+            goTo(i);
+            
+            await new Promise(r => setTimeout(r, 150));
+            await waitForImage(bgImg);
+
+            const imageUrl = await generateCardImageData();
+            const cardName = batch.cards[i].name || `Card_${i + 1}`;
+            const safeName = cardName.replace(/[\\/:*?"<>|]/g, '_');
+            const fileName = `${safeName}_${i + 1}.png`;
+
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            await new Promise(r => setTimeout(r, 800));
+        }
+
+        alert(`已匯出 ${total} 張卡片！`);
+    } catch (err) {
+        console.error('批次匯出失敗:', err);
+        alert('批次匯出失敗：' + (err.message || err));
+    } finally {
+        exportBtn.disabled = false;
+        exportBtn.textContent = '批次匯出全部';
+        updateBatchUI();
     }
 }
 
@@ -1950,7 +2014,13 @@ function snapshotForm() {
             translateX: imgState.translateX,
             translateY: imgState.translateY,
             rotation: imgState.rotation
-        }
+        },
+        features: [
+            { ...featureState['1'] },
+            { ...featureState['2'] },
+            { ...featureState['3'] },
+            { ...featureState['4'] }
+        ]
     };
 }
 
@@ -1999,6 +2069,39 @@ function loadCardToForm(card) {
         clearImage();
     }
 
+    // 👈 新增特徵狀態還原
+    if (card.features && card.features.length === 4) {
+        for (let i = 1; i <= 4; i++) {
+            const state = card.features[i - 1];
+            featureState[i] = { ...state };
+            
+            // 更新輸入框
+            const input = document.querySelector(`.feature-text-input[data-index="${i}"]`);
+            if (input) input.value = state.text;
+            
+            // 更新顏色按鈕
+            const btn = document.querySelector(`.feature-color-btn[data-index="${i}"]`);
+            if (btn) {
+                btn.classList.toggle('no-color', state.color === '');
+                btn.style.background = state.color || '';
+            }
+            // 更新預覽框
+            updateFeatureBox(i);
+                }
+            } else {
+                // 如果這張卡還沒有特徵資料，清空
+                for (let i = 1; i <= 4; i++) {
+                    featureState[i] = { color: '', text: '' };
+                    const input = document.querySelector(`.feature-text-input[data-index="${i}"]`);
+                    if (input) input.value = '';
+                    const btn = document.querySelector(`.feature-color-btn[data-index="${i}"]`);
+                    if (btn) {
+                        btn.classList.add('no-color');
+                        btn.style.background = '';
+                    }
+                    updateFeatureBox(i);
+                }
+            }
     updatePreview();
 }
 
@@ -2014,11 +2117,14 @@ function updateBatchUI() {
     const prev = document.getElementById('batchPrevBtn');
     const next = document.getElementById('batchNextBtn');
     const counter = document.getElementById('batchCounter');
-
+    const exportAllBtn = document.getElementById('exportAllBtn');
     prev.style.display = next.style.display = batch.active ? 'block' : 'none';
     prev.disabled = batch.index <= 0;
     next.disabled = batch.index >= batch.cards.length - 1;
     counter.textContent = batch.active ? `第 ${batch.index + 1} / ${batch.cards.length} 張` : '';
+    if (exportAllBtn) {
+        exportAllBtn.style.display = batch.active ? 'inline-block' : 'none';
+    }
 }
 
 function afterDownloadAdvance() {
@@ -2052,7 +2158,7 @@ function initBatchImport() {
         if (f) handleExcelImport(f);
         e.target.value = '';
     });
-
+    document.getElementById('exportAllBtn').addEventListener('click', exportAllCards);
     document.getElementById('batchPrevBtn').addEventListener('click', () => goTo(batch.index - 1));
     document.getElementById('batchNextBtn').addEventListener('click', () => goTo(batch.index + 1));
 }
