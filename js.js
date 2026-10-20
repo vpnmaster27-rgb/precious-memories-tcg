@@ -257,6 +257,23 @@ const cardUIImages = {
     purple_support: "img/紫色裝備.png"
 };
 
+const cardUIImagesLarge = {
+    /*red_character_num: "img/紅色有數字_大.png",
+    red_character_nonum: "img/紅色沒數字_大.png",
+    
+    blue_character_num: "img/藍色有數字_大.png",*/
+    blue_character_nonum: "img/藍色沒數字_大.png",
+
+    /*green_character_num: "img/綠色有數字_大.png",
+    green_character_nonum: "img/綠色沒數字_大.png",
+
+    yellow_character_num: "img/黃色有數字_大.png",
+    yellow_character_nonum: "img/黃色沒數字_大.png",
+
+    purple_character_num: "img/紫色有數字_大.png",
+    purple_character_nonum: "img/紫色沒數字_大.png"*/
+};
+
 const allKeywords = [
     { id: 'ex', name: 'EXカード', hasNumber: false, group: 'event_choice' },
     { id: 'break', name: 'ブレイク', hasNumber: false, group: 'event_choice' },
@@ -1598,7 +1615,7 @@ function updatePreview() {
         }
     }
 
-    const userEffectText = cardEffectInput.value;
+        const userEffectText = cardEffectInput.value;
     let finalEffectContent = "";
 
     if (selectedKeywordsText.length > 0) {
@@ -1611,6 +1628,29 @@ function updatePreview() {
     }
 
     prevEffect.innerHTML = finalEffectContent;
+
+    let isLargeUI = false;
+    const uiPathNormal = cardUIImages[uiKey];
+
+    if (selectedType === 'character_num' || selectedType === 'character_nonum') {
+        cardPreview.removeAttribute('data-ui-large');
+        
+        prevEffect.style.fontSize = '9.5px';
+        
+        const lineHeight = 13;
+        const lines = Math.ceil(prevEffect.scrollHeight / lineHeight);
+        
+        if (lines > 5 && cardUIImagesLarge[uiKey]) {
+            isLargeUI = true;
+            cardPreview.setAttribute('data-ui-large', 'true');
+            uiFrameImg.src = cardUIImagesLarge[uiKey];
+        } else {
+            uiFrameImg.src = uiPathNormal;
+        }
+    } else {
+        cardPreview.removeAttribute('data-ui-large');
+        uiFrameImg.src = uiPathNormal;
+    }
 
     fitEffectText(prevEffect);
     fitNameText(prevName, selectedType);
@@ -1627,7 +1667,6 @@ function updatePreview() {
     }
 }
 
-// ===== 卡片詳情 Modal =====
 const cardModal = document.getElementById('cardModal');
 const cardModalClose = document.getElementById('cardModalClose');
 const modalCardImg = document.getElementById('modalCardImg');

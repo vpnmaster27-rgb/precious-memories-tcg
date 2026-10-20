@@ -1416,3 +1416,15 @@
         background: linear-gradient(to top right, transparent 45%, #c00 45%, #c00 55%, transparent 55%);
         border-radius: 3px;
     }
+
+    /* ===== 角色卡效果欄加大版 (超過 5 行時觸發) ===== */
+    .card-preview[data-ui-large="true"] .card-effect {
+        top: 375px !important;
+        height: 80px !important;
+    }
+
+    /* 加大版的不透明填滿也要跟著變大 */
+    .card-preview[data-ui-large="true"] .card-effect-bg {
+        top: 365px !important;
+        height: 120px !important;
+    }
