@@ -258,20 +258,20 @@ const cardUIImages = {
 };
 
 const cardUIImagesLarge = {
-    /*red_character_num: "img/紅色有數字_大.png",
+    red_character_num: "img/紅色有數字_大.png",
     red_character_nonum: "img/紅色沒數字_大.png",
     
-    blue_character_num: "img/藍色有數字_大.png",*/
+    blue_character_num: "img/藍色有數字_大.png",
     blue_character_nonum: "img/藍色沒數字_大.png",
 
-    /*green_character_num: "img/綠色有數字_大.png",
+    green_character_num: "img/綠色有數字_大.png",
     green_character_nonum: "img/綠色沒數字_大.png",
 
     yellow_character_num: "img/黃色有數字_大.png",
     yellow_character_nonum: "img/黃色沒數字_大.png",
 
     purple_character_num: "img/紫色有數字_大.png",
-    purple_character_nonum: "img/紫色沒數字_大.png"*/
+    purple_character_nonum: "img/紫色沒數字_大.png"
 };
 
 const allKeywords = [
