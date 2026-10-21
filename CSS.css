@@ -378,7 +378,7 @@
 
         .card-preview[data-type="character_num"] .card-effect,
         .card-preview[data-type="character_nonum"] .card-effect {
-            top: 393px;
+            top: 400px;
             left: 30px;
             width: 312px;
             height: 65px;
@@ -1419,7 +1419,7 @@
 
     /* ===== 角色卡效果欄加大版 (超過 5 行時觸發) ===== */
     .card-preview[data-ui-large="true"] .card-effect {
-        top: 375px !important;
+        top: 370px !important;
         height: 80px !important;
     }
 
