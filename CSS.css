@@ -378,11 +378,11 @@
 
         .card-preview[data-type="character_num"] .card-effect,
         .card-preview[data-type="character_nonum"] .card-effect {
-            top: 393px;
+            top: 400px;
             left: 30px;
             width: 312px;
             height: 65px;
-            line-height:11px;
+            line-height:12px;
             writing-mode: horizontal-tb;
             transform: none;
         }
@@ -408,7 +408,7 @@
         /*事件卡效果框*/
         .card-effect.vertical-mode {
             top: 270px;
-            left: 30px;
+            left: 29px;
             width: 435px;
             height: 70px;
             font-weight: 700; 
@@ -1427,4 +1427,11 @@
     .card-preview[data-ui-large="true"] .card-effect-bg {
         top: 365px !important;
         height: 120px !important;
+    }
+
+    /* 👈 加大版：角色卡 卡名位置獨立調整 */
+    .card-preview[data-ui-large="true"][data-type="character_num"] .card-name-text,
+    .card-preview[data-ui-large="true"][data-type="character_nonum"] .card-name-text {
+        top: 347px !important;
+        left: 76px !important; 
     }
