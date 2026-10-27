@@ -705,7 +705,7 @@ async function exportAllCards() {
     if (!batch.active || batch.cards.length === 0) return;
 
     const total = batch.cards.length;
-    if (!confirm(`即將依序下載 ${total} 張卡片，下載過程中請不要操作網頁，確定嗎？`)) return;
+    if (!confirm(`即將匯出 ${total} 張卡片並打包成 ZIP，下載過程中請不要操作網頁，確定嗎？`)) return;
 
     const exportBtn = document.getElementById('exportAllBtn');
     exportBtn.disabled = true;
@@ -718,36 +718,48 @@ async function exportAllCards() {
     try {
         saveCurrentCard();
 
+        const zip = new JSZip();
+        const folder = zip.folder("卡片匯出");
+
         for (let i = 0; i < total; i++) {
-            exportBtn.textContent = `匯出中 (${i + 1}/${total})...`;
+            exportBtn.textContent = `打包中 (${i + 1}/${total})...`;
             
             goTo(i);
-            
             await new Promise(r => setTimeout(r, 150));
             await waitForImage(bgImg);
 
             const imageUrl = await generateCardImageData();
+            
+            const base64Data = imageUrl.replace(/^data:image\/png;base64,/, "");
+
             const cardName = batch.cards[i].name || `Card_${i + 1}`;
             const safeName = cardName.replace(/[\\/:*?"<>|]/g, '_');
-            const fileName = `${safeName}_${i + 1}.png`;
+            const fileName = `${String(i + 1).padStart(2, '0')}_${safeName}.png`;
 
-            const link = document.createElement('a');
-            link.href = imageUrl;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            await new Promise(r => setTimeout(r, 800));
+            folder.file(fileName, base64Data, { base64: true });
         }
+        exportBtn.textContent = '正在壓縮...';
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-        alert(`已匯出 ${total} 張卡片！`);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const zipFileName = `卡片批次匯出_${dateStr}.zip`;
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = zipFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+
+        alert(`成功打包並匯出 ${total} 張卡片！`);
     } catch (err) {
         console.error('批次匯出失敗:', err);
         alert('批次匯出失敗：' + (err.message || err));
     } finally {
         exportBtn.disabled = false;
-        exportBtn.textContent = '批次匯出全部';
+        exportBtn.textContent = '一鍵下載';
         updateBatchUI();
     }
 }
