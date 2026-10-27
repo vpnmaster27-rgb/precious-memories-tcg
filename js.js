@@ -1636,9 +1636,21 @@ function updatePreview() {
         cardPreview.removeAttribute('data-ui-large');
         
         prevEffect.style.fontSize = '9.5px';
+        prevEffect.style.lineHeight = '10.5px'; 
         
-        const lineHeight = 13;
-        const lines = Math.ceil(prevEffect.scrollHeight / lineHeight);
+        const measureEl = prevEffect.cloneNode(true);
+        measureEl.style.position = 'absolute';
+        measureEl.style.visibility = 'hidden';
+        measureEl.style.width = '312px';
+        measureEl.style.height = 'auto';
+        measureEl.style.overflow = 'visible';
+        measureEl.style.padding = '0';
+        measureEl.style.margin = '0';
+        document.body.appendChild(measureEl);
+        
+        const contentHeight = measureEl.offsetHeight;
+        const lines = Math.ceil(contentHeight / 10.5);
+        document.body.removeChild(measureEl);
         
         if (lines > 5 && cardUIImagesLarge[uiKey]) {
             isLargeUI = true;
