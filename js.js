@@ -564,6 +564,52 @@ function initImageControls() {
     }
 }
 
+function initDragAndDrop() {
+    const dropArea = document.getElementById('cardPreview');
+    const overlay = document.getElementById('dropZoneOverlay');
+    
+    if (!dropArea || !overlay) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+        
+        document.body.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => {
+            overlay.classList.add('active');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => {
+            overlay.classList.remove('active');
+        }, false);
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+            const file = files[0];
+            
+            if (file.type.startsWith('image/')) {
+                openUploadCropModal(file);
+            } else {
+                alert('請拖曳圖片檔案（如 .jpg, .png）！');
+            }
+        }
+    }, false);
+}
+
 function getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit) {
     if (objectFit === 'cover') {
         const s = Math.max(boxW / imgNW, boxH / imgNH);
@@ -1077,6 +1123,7 @@ function init() {
     downloadBtn.addEventListener('click', downloadCard);
 
     initImageControls();
+    initDragAndDrop();
     initUploadCropControls();
     initTagButtons();
     initStepperControls();

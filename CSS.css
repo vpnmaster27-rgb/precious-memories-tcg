@@ -1435,3 +1435,25 @@
         top: 347px !important;
         left: 76px !important; 
     }
+
+    /* ===== 拖曳上傳遮罩 ===== */
+    .drop-zone-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(77, 166, 255, 0.4); /* 半透明藍色 */
+        border: 3px dashed #fff;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        z-index: 100; /* 蓋在圖片和 UI 之上 */
+        pointer-events: none; /* 讓滑鼠事件穿透 */
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        transition: opacity 0.2s ease;
+    }
+
+    .drop-zone-overlay.active {
+        display: flex;
+    }
