@@ -275,7 +275,7 @@ const cardUIImagesLarge = {
 };
 
 const allKeywords = [
-    { id: 'ex', name: 'EXカード', hasNumber: false, group: 'event_choice' },
+    { id: 'ex', name: 'EXカード', hasNumber: false, group: 'event_choice', customText: '<img src="img/ex.png" class="inline-effect-icon">' },
     { id: 'break', name: 'ブレイク', hasNumber: false, group: 'event_choice' },
     { id: 'lvlup', name: 'レベルアップ', hasNumber: false, group: 'combi_lvl' },
     { id: 'combi', name: 'コンビ', hasNumber: false, group: 'combi_lvl' },
@@ -630,37 +630,43 @@ async function bakeCardImage() {
         return null;
     }
 
-    const boxW = origPreview.offsetWidth;
-    const boxH = origPreview.offsetHeight;
+    try {
+        const boxW = origPreview.offsetWidth;
+        const boxH = origPreview.offsetHeight;
 
-    const scaleFactor = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = boxW * scaleFactor;
-    canvas.height = boxH * scaleFactor;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scaleFactor, scaleFactor);
+        const scaleFactor = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = boxW * scaleFactor;
+        canvas.height = boxH * scaleFactor;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scaleFactor, scaleFactor);
 
-    const computedStyle = window.getComputedStyle(origBgImg);
-    const objectFit = computedStyle.objectFit || 'cover';
-    const imgNW = origBgImg.naturalWidth;
-    const imgNH = origBgImg.naturalHeight;
-    const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
+        const computedStyle = window.getComputedStyle(origBgImg);
+        const objectFit = computedStyle.objectFit || 'cover';
+        const imgNW = origBgImg.naturalWidth;
+        const imgNH = origBgImg.naturalHeight;
+        const { w: renderW, h: renderH } = getFittedDimensions(imgNW, imgNH, boxW, boxH, objectFit);
 
-    ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
-    ctx.rotate((imgState.rotation * Math.PI) / 180);
-    ctx.scale(imgState.scale, imgState.scale);
-    ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
+        ctx.translate(boxW / 2 + imgState.translateX, boxH / 2 + imgState.translateY);
+        ctx.rotate((imgState.rotation * Math.PI) / 180);
+        ctx.scale(imgState.scale, imgState.scale);
+        ctx.drawImage(origBgImg, -renderW / 2, -renderH / 2, renderW, renderH);
 
-    // 等圖片真的載入完成，避免 html2canvas 提前截圖
-    const dataUrl = canvas.toDataURL('image/png');
-    await new Promise((resolve) => {
-        const test = new Image();
-        test.onload = resolve;
-        test.onerror = resolve;
-        test.src = dataUrl;
-    });
+        const dataUrl = canvas.toDataURL('image/png');
+        await new Promise((resolve, reject) => {
+            const test = new Image();
+            const timer = setTimeout(() => reject(new Error('背景圖合成後載入超時')), 3000);
+            
+            test.onload = () => { clearTimeout(timer); resolve(); };
+            test.onerror = () => { clearTimeout(timer); reject(new Error('背景圖合成失敗')); };
+            test.src = dataUrl;
+        });
 
-    return dataUrl;
+        return dataUrl;
+    } catch (err) {
+        console.warn('背景圖烘焙失敗，略過背景圖', err);
+        return null;
+    }
 }
 
 function waitForImage(imgElement) {
@@ -676,46 +682,57 @@ function waitForImage(imgElement) {
 
 async function generateCardImageData() {
     const cardPreview = document.getElementById('cardPreview');
-    
-    await waitForImage(bgImg);
-
-    const bakedCardImage = await bakeCardImage();
-    const bakedFeatureImages = await bakeAllFeatureSlots();
-
-    const canvas = await html2canvas(cardPreview, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        onclone: (clonedDoc) => {
-            if (bakedCardImage) {
-                const clonedBgImg = clonedDoc.getElementById('bgImg');
-                if (clonedBgImg) {
-                    clonedBgImg.src = bakedCardImage;
-                    clonedBgImg.style.transform = 'none';
-                    clonedBgImg.style.top = '0';
-                    clonedBgImg.style.left = '0';
-                    clonedBgImg.style.width = '100%';
-                    clonedBgImg.style.height = '100%';
-                    clonedBgImg.style.objectFit = 'fill';
-                }
-            }
-
-            const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
-            clonedSlots.forEach((slot, i) => {
-                const baked = bakedFeatureImages[i];
-                if (!baked || !baked.dataUrl) return;
-                slot.innerHTML = '';
-                const img = clonedDoc.createElement('img');
-                img.src = baked.dataUrl;
-                img.style.display = 'block';
-                img.style.width = baked.width + 'px';
-                img.style.height = baked.height + 'px';
-                slot.appendChild(img);
-            });
-        }
+    const globalTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('產生卡片圖片超時，請檢查網路或圖片是否損壞')), 10000);
     });
-    return canvas.toDataURL('image/png');
+
+    const process = async () => {
+        await waitForImage(bgImg);
+
+        const bakedCardImage = await bakeCardImage();
+        const bakedFeatureImages = await bakeAllFeatureSlots();
+
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('html2canvas 截圖超時')), 5000);
+        });
+        
+        const canvasPromise = html2canvas(cardPreview, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: null,
+            onclone: (clonedDoc) => {
+                if (bakedCardImage) {
+                    const clonedBgImg = clonedDoc.getElementById('bgImg');
+                    if (clonedBgImg) {
+                        clonedBgImg.src = bakedCardImage;
+                        clonedBgImg.style.transform = 'none';
+                        clonedBgImg.style.top = '0';
+                        clonedBgImg.style.left = '0';
+                        clonedBgImg.style.width = '100%';
+                        clonedBgImg.style.height = '100%';
+                        clonedBgImg.style.objectFit = 'fill';
+                    }
+                }
+
+                const clonedSlots = clonedDoc.querySelectorAll('.feature-box-slot');
+                clonedSlots.forEach((slot, i) => {
+                    const baked = bakedFeatureImages[i];
+                    if (!baked || !baked.dataUrl) return;
+                    slot.innerHTML = '';
+                    const img = clonedDoc.createElement('img');
+                    img.src = baked.dataUrl;
+                    img.style.display = 'block';
+                    img.style.width = baked.width + 'px';
+                    img.style.height = baked.height + 'px';
+                    slot.appendChild(img);
+                });
+            }
+        });
+        const canvas = await Promise.race([canvasPromise, timeoutPromise]);
+        return canvas.toDataURL('image/png');
+    };
+    return Promise.race([process(), globalTimeout]);
 }
 
 async function downloadCard() {
@@ -1632,34 +1649,36 @@ function updatePreview() {
 
 
     let selectedKeywordsText = [];
-    
-    allKeywords.forEach(kw => {
-    const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
-    if (cb) {
-        let text;
-        if (kw.customText) {
-            text = kw.customText;
-            // 若這個關鍵字有文字輸入框，把「」內的內容換成使用者輸入
-            if (kw.hasText) {
-                const textInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
-                if (textInput) {
-                    const val = textInput.value.trim();
-                    text = text.replace('「」', `「${val}」`);
+        allKeywords.forEach(kw => {
+        const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
+        if (cb) {
+            let text;
+            if (kw.customText) {
+                text = kw.customText;
+                if (kw.hasText) {
+                    const textInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
+                    if (textInput) {
+                        const val = textInput.value.trim();
+                        text = text.replace('「」', `「${val}」`);
+                    }
                 }
-            }
-        } else {
-            text = `〔${kw.name}`;
-            if (kw.hasNumber) {
-                const numInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
-                if (numInput) {
-                    text += numInput.value;
+            } else {
+                text = `〔${kw.name}`;
+                if (kw.hasNumber) {
+                    const numInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
+                    if (numInput) {
+                        text += numInput.value;
+                    }
                 }
+                text += `〕`;
             }
-            text += `〕`;
+            if (kw.customText) {
+                selectedKeywordsText.push(`<span style="display: inline-block; vertical-align: middle; margin-right: 8px;">${text}</span>`);
+            } else {
+                selectedKeywordsText.push(`<b>${text}</b>`);
+            }
         }
-        selectedKeywordsText.push(`<b>${text}</b>`);
-    }
-});
+    });
 
     const customCb = document.getElementById('customKwCheckbox');
     const customNameInput = document.getElementById('customKwName');
@@ -2276,8 +2295,19 @@ function initBatchImport() {
 function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('圖片載入失敗: ' + src));
+        const timer = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            reject(new Error('圖片載入超時: ' + src));
+        }, 3000);
+        img.onload = () => {
+            clearTimeout(timer);
+            resolve(img);
+        };
+        img.onerror = () => {
+            clearTimeout(timer);
+            reject(new Error('圖片載入失敗: ' + src));
+        };
         img.src = src;
     });
 }
