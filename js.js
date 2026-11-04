@@ -276,8 +276,8 @@ const cardUIImagesLarge = {
 
 const allKeywords = [
     { id: 'ex', name: 'EXカード', hasNumber: false, group: 'event_choice', customText: '<img src="img/ex.png" class="inline-effect-icon">' },
-    { id: 'break', name: 'ブレイク', hasNumber: false, group: 'event_choice' },
-    { id: 'lvlup', name: 'レベルアップ', hasNumber: false, group: 'combi_lvl' },
+    { id: 'break', name: 'ブレイク', hasNumber: false, group: 'event_choice', customText: '<img src="img/break.png" class="inline-effect-icon">' },
+    { id: 'lvlup', name: 'レベルアップ', hasNumber: false, group: 'combi_lvl', customText: '<img src="img/lvlup.png" class="inline-effect-icon">' },
     { id: 'combi', name: 'コンビ', hasNumber: false, group: 'combi_lvl' },
     { id: 'active', name: 'アクティブ', hasNumber: false, group: null },
     { id: 'kyoin', name: '強引', hasNumber: false, group: null },
