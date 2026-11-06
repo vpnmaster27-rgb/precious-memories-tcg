@@ -254,7 +254,10 @@ const cardUIImages = {
     purple_character_num: "img/紫色有數字.png",
     purple_character_nonum: "img/紫色沒數字.png",
     purple_event: "img/紫色事件.png",
-    purple_support: "img/紫色裝備.png"
+    purple_support: "img/紫色裝備.png",
+
+    white_character_num: "img/白色有數字.png",
+    white_character_nonum: "img/白色無數字.png"
 };
 
 const cardUIImagesLarge = {
@@ -441,6 +444,7 @@ let cropState = {
 let uploadCropState = {
     x: 0, y: 0, w: 0, h: 0,
     dragMode: null,
+    pointerId: null,
     startX: 0, startY: 0,
     startBox: null
 };
@@ -669,33 +673,50 @@ async function bakeCardImage() {
     }
 }
 
-function waitForImage(imgElement) {
-    return new Promise((resolve) => {
-        if (imgElement.complete && imgElement.naturalWidth > 0) {
+function withTimeout(promise, timeoutMs, message) {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        })
+    ]).finally(() => clearTimeout(timer));
+}
+
+async function waitForImage(imgElement, timeoutMs = 5000) {
+    if (!imgElement || imgElement.style.display === 'none' || !imgElement.getAttribute('src')) return;
+    if (imgElement.complete) return;
+
+    await new Promise((resolve, reject) => {
+        let timer;
+        const cleanup = () => {
+            clearTimeout(timer);
+            imgElement.removeEventListener('load', finish);
+            imgElement.removeEventListener('error', finish);
+        };
+        const finish = () => {
+            cleanup();
             resolve();
-        } else {
-            imgElement.onload = resolve;
-            imgElement.onerror = resolve;
-        }
+        };
+        imgElement.addEventListener('load', finish, { once: true });
+        imgElement.addEventListener('error', finish, { once: true });
+        timer = setTimeout(() => {
+            cleanup();
+            reject(new Error('圖片載入超時'));
+        }, timeoutMs);
     });
 }
 
-async function generateCardImageData() {
+async function generateCardImageCanvas() {
     const cardPreview = document.getElementById('cardPreview');
-    const globalTimeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('產生卡片圖片超時，請檢查網路或圖片是否損壞')), 10000);
-    });
-
     const process = async () => {
-        await waitForImage(bgImg);
+        // Let the scheduled preview update set the correct frame before measuring and rendering.
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await Promise.all([waitForImage(bgImg), waitForImage(uiFrameImg)]);
 
         const bakedCardImage = await bakeCardImage();
         const bakedFeatureImages = await bakeAllFeatureSlots();
 
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('html2canvas 截圖超時')), 5000);
-        });
-        
         const canvasPromise = html2canvas(cardPreview, {
             scale: 2,
             useCORS: true,
@@ -719,7 +740,7 @@ async function generateCardImageData() {
                 clonedSlots.forEach((slot, i) => {
                     const baked = bakedFeatureImages[i];
                     if (!baked || !baked.dataUrl) return;
-                    slot.innerHTML = '';
+                    slot.replaceChildren();
                     const img = clonedDoc.createElement('img');
                     img.src = baked.dataUrl;
                     img.style.display = 'block';
@@ -729,10 +750,29 @@ async function generateCardImageData() {
                 });
             }
         });
-        const canvas = await Promise.race([canvasPromise, timeoutPromise]);
-        return canvas.toDataURL('image/png');
+        return withTimeout(canvasPromise, 5000, 'html2canvas 截圖超時');
     };
-    return Promise.race([process(), globalTimeout]);
+
+    return withTimeout(
+        process(),
+        10000,
+        '產生卡片圖片超時，請檢查網路或圖片是否損壞'
+    );
+}
+
+async function generateCardImageData() {
+    const canvas = await generateCardImageCanvas();
+    return canvas.toDataURL('image/png');
+}
+
+async function generateCardImageBlob() {
+    const canvas = await generateCardImageCanvas();
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+            if (blob) resolve(blob);
+            else reject(new Error('無法建立 PNG 圖片資料'));
+        }, 'image/png');
+    });
 }
 
 async function downloadCard() {
@@ -788,18 +828,13 @@ async function exportAllCards() {
             exportBtn.textContent = `打包中 (${i + 1}/${total})...`;
             
             goTo(i);
-            await new Promise(r => setTimeout(r, 150));
-            await waitForImage(bgImg);
-
-            const imageUrl = await generateCardImageData();
-            
-            const base64Data = imageUrl.replace(/^data:image\/png;base64,/, "");
+            const imageBlob = await generateCardImageBlob();
 
             const cardName = batch.cards[i].name || `Card_${i + 1}`;
             const safeName = cardName.replace(/[\\/:*?"<>|]/g, '_');
             const fileName = `${String(i + 1).padStart(2, '0')}_${safeName}.png`;
 
-            folder.file(fileName, base64Data, { base64: true });
+            folder.file(fileName, imageBlob);
         }
         exportBtn.textContent = '正在壓縮...';
         const zipBlob = await zip.generateAsync({ type: 'blob' });
@@ -808,13 +843,14 @@ async function exportAllCards() {
         const zipFileName = `卡片批次匯出_${dateStr}.zip`;
         
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(zipBlob);
+        const zipUrl = URL.createObjectURL(zipBlob);
+        link.href = zipUrl;
         link.download = zipFileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
 
         alert(`成功打包並匯出 ${total} 張卡片！`);
     } catch (err) {
@@ -888,42 +924,51 @@ function renderGallerySeriesList() {
     updateGallerySortButtons();
 }
 
-const galleryCardsCache = {};
-const cardInfoCache = {};
+const galleryCardsCache = new Map();
+const cardInfoCache = new Map();
+let galleryLoadSequence = 0;
 
 let currentGallerySeriesName = '';
 let currentGalleryFiles = [];
 let currentGalleryIndex = -1;
 
 async function loadSeriesCards(seriesName) {
-    if (galleryCardsCache[seriesName]) {
-        return galleryCardsCache[seriesName];
-    }
+    if (galleryCardsCache.has(seriesName)) return galleryCardsCache.get(seriesName);
 
-    const url = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/list.txt';
+    const pending = (async () => {
+        const url = GALLERY_BASE + '/' + encodeURIComponent(seriesName) + '/list.txt';
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('找不到 list.txt');
 
-    try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('找不到 list.txt');
-
-        const text = await res.text();
-        const files = text.split('\n')
-            .map(line => line.trim())
-            .filter(line => /\.(jpg|jpeg|png|gif|webp)$/i.test(line));
-
-        galleryCardsCache[seriesName] = files;
-        return files;
-    } catch (err) {
-        console.warn(`讀取 ${seriesName} 的 list.txt 失敗：`, err);
-        galleryCardsCache[seriesName] = [];
-        return [];
-    }
+            const text = await res.text();
+            return text.split('\n')
+                .map(line => line.trim())
+                .filter(line => /\.(jpg|jpeg|png|gif|webp)$/i.test(line));
+        } catch (err) {
+            console.warn(`讀取 ${seriesName} 的 list.txt 失敗：`, err);
+            return [];
+        }
+    })();
+    galleryCardsCache.set(seriesName, pending);
+    return pending;
 }
 
 async function getCardInfo(seriesName, fileName) {
     const cacheKey = seriesName + '::' + fileName;
-    if (cardInfoCache[cacheKey]) return cardInfoCache[cacheKey];
+    if (cardInfoCache.has(cacheKey)) return cardInfoCache.get(cacheKey);
 
+    const pending = loadCardInfo(seriesName, fileName);
+    cardInfoCache.set(cacheKey, pending);
+    try {
+        return await pending;
+    } catch (err) {
+        cardInfoCache.delete(cacheKey);
+        throw err;
+    }
+}
+
+async function loadCardInfo(seriesName, fileName) {
     const baseName = fileName.replace(/\.[^.]+$/, '');
     const cardId = baseName.split('_').pop();
 
@@ -983,13 +1028,35 @@ async function getCardInfo(seriesName, fileName) {
             console.warn('讀取效果文失敗：', err);
         }
     }
-        cardInfoCache[cacheKey] = { rarity, number, cost, source, type, name, color, feature, ap, dp, effect };
     return { rarity, number, cost, source, type, name, color, feature, ap, dp, effect };
 }
 
+async function mapWithConcurrency(items, limit, mapper) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+    const workerCount = Math.min(Math.max(1, limit), items.length);
+
+    await Promise.all(Array.from({ length: workerCount }, async () => {
+        while (nextIndex < items.length) {
+            const index = nextIndex++;
+            results[index] = await mapper(items[index], index);
+        }
+    }));
+    return results;
+}
+
+function buildGallerySearchText(info) {
+    return [
+        info.name, info.number, info.feature, info.effect,
+        info.rarity, info.color, info.type
+    ].join(' ').toLocaleLowerCase();
+}
+
 let currentGalleryCardsData = [];
+let gallerySearchTimer = null;
 
 async function openSeries(seriesName) {
+    const loadSequence = ++galleryLoadSequence;
     const seriesView = document.getElementById('gallerySeriesView');
     const cardsView = document.getElementById('galleryCardsView');
     const title = document.getElementById('galleryCardsTitle');
@@ -1009,11 +1076,14 @@ async function openSeries(seriesName) {
     const filterColor = document.getElementById('filterColor');
     const filterType = document.getElementById('filterType');
     const gallerySearch = document.getElementById('gallerySearch');
+    clearTimeout(gallerySearchTimer);
+    gallerySearchTimer = null;
     if (filterColor) filterColor.value = '';
     if (filterType) filterType.value = '';
     if (gallerySearch) gallerySearch.value = '';
 
     const files = await loadSeriesCards(seriesName);
+    if (loadSequence !== galleryLoadSequence) return;
 
     currentGallerySeriesName = seriesName;
     currentGalleryFiles = files;
@@ -1025,12 +1095,12 @@ async function openSeries(seriesName) {
         return;
     }
 
-    const cardsData = await Promise.all(
-        files.map(async (fileName, index) => {
-            const info = await getCardInfo(seriesName, fileName);
-            return { fileName, index, info };
-        })
-    );
+    const cardsData = await mapWithConcurrency(files, 8, async (fileName, index) => {
+        const info = await getCardInfo(seriesName, fileName);
+        return { fileName, index, info, searchText: buildGallerySearchText(info) };
+    });
+
+    if (loadSequence !== galleryLoadSequence) return;
 
     currentGalleryCardsData = cardsData;
     renderGalleryCards();
@@ -1039,22 +1109,15 @@ async function openSeries(seriesName) {
 function renderGalleryCards() {
     const list = document.getElementById('galleryCardsList');
     if (!list) return;
-    list.innerHTML = '';
 
     const colorFilter = document.getElementById('filterColor')?.value || '';
     const typeFilter = document.getElementById('filterType')?.value || '';
-    const searchText = document.getElementById('gallerySearch')?.value.trim() || '';
+    const searchText = (document.getElementById('gallerySearch')?.value.trim() || '').toLocaleLowerCase();
 
-    const filtered = currentGalleryCardsData.filter(({ info }) => {
+    const filtered = currentGalleryCardsData.filter(({ info, searchText: cardSearchText }) => {
         if (colorFilter && info.color !== colorFilter) return false;
         if (typeFilter && info.type !== typeFilter) return false;
-        if (searchText) {
-            const haystack = [
-                info.name, info.number, info.feature,
-                info.effect, info.rarity, info.color, info.type
-            ].join(' ');
-            if (!haystack.includes(searchText)) return false;
-        }
+        if (searchText && !cardSearchText.includes(searchText)) return false;
         return true;
     });
 
@@ -1063,6 +1126,7 @@ function renderGalleryCards() {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     filtered.forEach(({ fileName, index }) => {
         const card = document.createElement('div');
         card.className = 'gallery-card';
@@ -1086,8 +1150,9 @@ function renderGalleryCards() {
             showCardAt(index);
         });
 
-        list.appendChild(card);
+        fragment.appendChild(card);
     });
+    list.replaceChildren(fragment);
 }
 
 function initGalleryFilters() {
@@ -1098,11 +1163,17 @@ function initGalleryFilters() {
     if (filterColor) filterColor.addEventListener('change', renderGalleryCards);
     if (filterType) filterType.addEventListener('change', renderGalleryCards);
     if (gallerySearch) {
-        gallerySearch.addEventListener('input', renderGalleryCards);
+        gallerySearch.addEventListener('input', () => {
+            clearTimeout(gallerySearchTimer);
+            gallerySearchTimer = setTimeout(renderGalleryCards, 140);
+        });
     }
 }
 
 function backToSeriesList() {
+    galleryLoadSequence++;
+    clearTimeout(gallerySearchTimer);
+    gallerySearchTimer = null;
     const seriesView = document.getElementById('gallerySeriesView');
     const cardsView = document.getElementById('galleryCardsView');
 
@@ -1214,6 +1285,7 @@ function updateUploadCropBoxUI() {
 function closeUploadCropModal() {
     uploadCropModal.classList.remove('open');
     uploadCropState.dragMode = null;
+    uploadCropState.pointerId = null;
     uploadCropState.startBox = null;
 }
 
@@ -1266,30 +1338,31 @@ function initUploadCropControls() {
         }
     });
 
-    // 拖曳裁切框
-    uploadCropBox.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('crop-handle')) return;
+    // Pointer Events cover mouse, pen, and touch with one drag path.
+    uploadCropBox.addEventListener('pointerdown', (e) => {
+        if (e.isPrimary === false || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        const handle = e.target.closest('.crop-handle');
+        if (handle && !uploadCropBox.contains(handle)) return;
+
         e.preventDefault();
         e.stopPropagation();
-        uploadCropState.dragMode = 'move';
+        uploadCropState.dragMode = handle ? handle.dataset.handle : 'move';
+        uploadCropState.pointerId = e.pointerId;
         uploadCropState.startX = e.clientX;
         uploadCropState.startY = e.clientY;
-        uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
+        uploadCropState.startBox = {
+            x: uploadCropState.x,
+            y: uploadCropState.y,
+            w: uploadCropState.w,
+            h: uploadCropState.h
+        };
+        uploadCropBox.setPointerCapture(e.pointerId);
     });
 
-    uploadCropBox.querySelectorAll('.crop-handle').forEach(h => {
-        h.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadCropState.dragMode = h.dataset.handle;
-            uploadCropState.startX = e.clientX;
-            uploadCropState.startY = e.clientY;
-            uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
-        });
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!uploadCropModal.classList.contains('open') || !uploadCropState.dragMode) return;
+    uploadCropBox.addEventListener('pointermove', (e) => {
+        if (!uploadCropModal.classList.contains('open') ||
+            !uploadCropState.dragMode ||
+            e.pointerId !== uploadCropState.pointerId) return;
 
         const dx = e.clientX - uploadCropState.startX;
         const dy = e.clientY - uploadCropState.startY;
@@ -1331,79 +1404,14 @@ function initUploadCropControls() {
         updateUploadCropBoxUI();
     });
 
-    window.addEventListener('mouseup', () => {
+    const finishPointerDrag = (e) => {
+        if (uploadCropState.pointerId !== null && e.pointerId !== uploadCropState.pointerId) return;
         uploadCropState.dragMode = null;
+        uploadCropState.pointerId = null;
         uploadCropState.startBox = null;
-    });
-
-    // 觸控支援
-    uploadCropBox.addEventListener('touchstart', (e) => {
-        if (e.target.classList.contains('crop-handle')) return;
-        e.preventDefault();
-        uploadCropState.dragMode = 'move';
-        uploadCropState.startX = e.touches[0].clientX;
-        uploadCropState.startY = e.touches[0].clientY;
-        uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
-    }, { passive: false });
-
-    uploadCropBox.querySelectorAll('.crop-handle').forEach(h => {
-        h.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            uploadCropState.dragMode = h.dataset.handle;
-            uploadCropState.startX = e.touches[0].clientX;
-            uploadCropState.startY = e.touches[0].clientY;
-            uploadCropState.startBox = { x: uploadCropState.x, y: uploadCropState.y, w: uploadCropState.w, h: uploadCropState.h };
-        }, { passive: false });
-    });
-
-    window.addEventListener('touchmove', (e) => {
-        if (!uploadCropModal.classList.contains('open') || !uploadCropState.dragMode || e.touches.length !== 1) return;
-        e.preventDefault();
-
-        const dx = e.touches[0].clientX - uploadCropState.startX;
-        const dy = e.touches[0].clientY - uploadCropState.startY;
-        const sb = uploadCropState.startBox;
-        const boxW = uploadCropImg.offsetWidth;
-        const boxH = uploadCropImg.offsetHeight;
-        const MIN = 20;
-
-        if (uploadCropState.dragMode === 'move') {
-            uploadCropState.x = Math.max(0, Math.min(boxW - sb.w, sb.x + dx));
-            uploadCropState.y = Math.max(0, Math.min(boxH - sb.h, sb.y + dy));
-        } else {
-            let x1 = sb.x, y1 = sb.y, x2 = sb.x + sb.w, y2 = sb.y + sb.h;
-            if (uploadCropState.dragMode.includes('w')) x1 = sb.x + dx;
-            if (uploadCropState.dragMode.includes('e')) x2 = sb.x + sb.w + dx;
-            if (uploadCropState.dragMode.includes('n')) y1 = sb.y + dy;
-            if (uploadCropState.dragMode.includes('s')) y2 = sb.y + sb.h + dy;
-
-            x1 = Math.max(0, Math.min(boxW, x1));
-            y1 = Math.max(0, Math.min(boxH, y1));
-            x2 = Math.max(0, Math.min(boxW, x2));
-            y2 = Math.max(0, Math.min(boxH, y2));
-
-            if (x2 - x1 < MIN) {
-                if (uploadCropState.dragMode.includes('w')) x1 = x2 - MIN;
-                else x2 = x1 + MIN;
-            }
-            if (y2 - y1 < MIN) {
-                if (uploadCropState.dragMode.includes('n')) y1 = y2 - MIN;
-                else y2 = y1 + MIN;
-            }
-
-            uploadCropState.x = x1;
-            uploadCropState.y = y1;
-            uploadCropState.w = x2 - x1;
-            uploadCropState.h = y2 - y1;
-        }
-
-        updateUploadCropBoxUI();
-    }, { passive: false });
-
-    window.addEventListener('touchend', () => {
-        uploadCropState.dragMode = null;
-        uploadCropState.startBox = null;
-    });
+    };
+    uploadCropBox.addEventListener('pointerup', finishPointerDrag);
+    uploadCropBox.addEventListener('pointercancel', finishPointerDrag);
 }
 
 // 讓輸入框寬度隨內容自動增減
@@ -1549,41 +1557,54 @@ function handleKeywordChange(e) {
 
 function fitEffectText(el) {
     if (!el) return;
-    
-    let fontSize = 9.5;
-    const minFontSize = 3.5;
-    el.style.fontSize = `${fontSize}px`;
 
-    while (
-        (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) &&
-        fontSize > minFontSize
-    ) {
-        fontSize -= 0.2;
-        el.style.fontSize = `${fontSize}px`;
+    const overflows = () => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+    let fittingSize = 3.5;
+    let overflowingSize = 9.5;
+    el.style.fontSize = `${overflowingSize}px`;
+    if (!overflows()) return;
+
+    for (let i = 0; i < 6; i++) {
+        const candidate = (fittingSize + overflowingSize) / 2;
+        el.style.fontSize = `${candidate}px`;
+        if (overflows()) overflowingSize = candidate;
+        else fittingSize = candidate;
     }
+    el.style.fontSize = `${fittingSize}px`;
 }
 
 function fitNameText(el, selectedType) {
     if (!el) return;
-    
-    let fontSize = (selectedType === 'event') ? 13 : 15;
-    const minFontSize = 7; 
-    el.style.fontSize = `${fontSize}px`;
 
-    if (selectedType === 'event') {
-        while (el.scrollHeight > el.clientHeight && fontSize > minFontSize) {
-            fontSize -= 0.5;
-            el.style.fontSize = `${fontSize}px`;
-        }
-    } else {
-        while (el.scrollWidth > el.clientWidth && fontSize > minFontSize) {
-            fontSize -= 0.5;
-            el.style.fontSize = `${fontSize}px`;
-        }
+    const overflows = selectedType === 'event'
+        ? () => el.scrollHeight > el.clientHeight
+        : () => el.scrollWidth > el.clientWidth;
+    let fittingSize = 7;
+    let overflowingSize = selectedType === 'event' ? 13 : 15;
+    el.style.fontSize = `${overflowingSize}px`;
+    if (!overflows()) return;
+
+    for (let i = 0; i < 6; i++) {
+        const candidate = (fittingSize + overflowingSize) / 2;
+        el.style.fontSize = `${candidate}px`;
+        if (overflows()) overflowingSize = candidate;
+        else fittingSize = candidate;
     }
+    el.style.fontSize = `${fittingSize}px`;
 }
 
+let previewUpdatePending = false;
+
 function updatePreview() {
+    if (previewUpdatePending) return;
+    previewUpdatePending = true;
+    requestAnimationFrame(() => {
+        previewUpdatePending = false;
+        updatePreviewNow();
+    });
+}
+
+function updatePreviewNow() {
     const selectedColor = cardColorInput.value;
     const selectedType = cardTypeInput.value;
 
@@ -1638,45 +1659,45 @@ function updatePreview() {
     
     const nameValue = cardNameInput.value || '';
     if (selectedType === 'event') {
-        prevName.innerHTML = nameValue
-            .split('')
-            .map(char => `<span>${char}</span>`)
-            .join('');
+        const nameNodes = Array.from(nameValue, char => {
+            const span = document.createElement('span');
+            span.textContent = char;
+            return span;
+        });
+        prevName.replaceChildren(...nameNodes);
     } else {
         prevName.textContent = nameValue;
     }
         prevNumber.textContent = cardNumberInput.value || '';
 
 
-    let selectedKeywordsText = [];
-        allKeywords.forEach(kw => {
+    const selectedKeywords = [];
+    allKeywords.forEach(kw => {
         const cb = keywordListContainer.querySelector(`input[data-id="${kw.id}"]:checked`);
         if (cb) {
-            let text;
+            let content;
+            let supportsIcons = false;
             if (kw.customText) {
-                text = kw.customText;
+                content = kw.customText;
+                supportsIcons = true;
                 if (kw.hasText) {
                     const textInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
                     if (textInput) {
                         const val = textInput.value.trim();
-                        text = text.replace('「」', `「${val}」`);
+                        content = content.replace('「」', `「${val}」`);
                     }
                 }
             } else {
-                text = `〔${kw.name}`;
+                content = `〔${kw.name}`;
                 if (kw.hasNumber) {
                     const numInput = keywordListContainer.querySelector(`input[data-for-kw="${kw.id}"]`);
                     if (numInput) {
-                        text += numInput.value;
+                        content += numInput.value;
                     }
                 }
-                text += `〕`;
+                content += `〕`;
             }
-            if (kw.customText) {
-                selectedKeywordsText.push(`<span style="display: inline-block; vertical-align: middle; margin-right: 8px;">${text}</span>`);
-            } else {
-                selectedKeywordsText.push(`<b>${text}</b>`);
-            }
+            selectedKeywords.push({ content, supportsIcons, bold: !kw.customText });
         }
     });
 
@@ -1689,23 +1710,29 @@ function updatePreview() {
         const kwVal = customValInput ? customValInput.value.trim() : '';
         
         if (kwName !== '') {
-            selectedKeywordsText.push(`<b>〔${kwName}${kwVal}〕</b>`);
+            selectedKeywords.push({ content: `〔${kwName}${kwVal}〕`, supportsIcons: false, bold: true });
         }
     }
 
-        const userEffectText = cardEffectInput.value;
-    let finalEffectContent = "";
-
-    if (selectedKeywordsText.length > 0) {
-        finalEffectContent += selectedKeywordsText.join('');
-        if (userEffectText.trim() !== "") {
-            finalEffectContent += "\n" + userEffectText;
+    const userEffectText = cardEffectInput.value;
+    const effectFragment = document.createDocumentFragment();
+    selectedKeywords.forEach(({ content, supportsIcons, bold }) => {
+        const item = document.createElement(bold ? 'b' : 'span');
+        if (supportsIcons) {
+            item.style.display = 'inline-block';
+            item.style.verticalAlign = 'middle';
+            item.style.marginRight = content.includes('<img') ? '0px' : '8px';
+            appendSafeEffectContent(item, content);
+        } else {
+            item.textContent = content;
         }
-    } else {
-        finalEffectContent = userEffectText;
+        effectFragment.appendChild(item);
+    });
+    if (selectedKeywords.length > 0 && userEffectText.trim() !== '') {
+        effectFragment.appendChild(document.createTextNode('\n'));
     }
-
-    prevEffect.innerHTML = finalEffectContent;
+    appendSafeEffectContent(effectFragment, userEffectText);
+    prevEffect.replaceChildren(effectFragment);
 
     let isLargeUI = false;
     const uiPathNormal = cardUIImages[uiKey];
@@ -1904,7 +1931,8 @@ const COLOR_MAP = {
     '青': 'blue', '藍': 'blue', '藍色': 'blue', 'blue': 'blue',
     '緑': 'green', '綠': 'green', '綠色': 'green', 'green': 'green',
     '黄': 'yellow', '黃': 'yellow', '黃色': 'yellow', 'yellow': 'yellow',
-    '紫': 'purple', '紫色': 'purple', 'purple': 'purple'
+    '紫': 'purple', '紫色': 'purple', 'purple': 'purple',
+    '白': 'white', '白色': 'white', 'white': 'white'
 };
 
 const EFFECT_ICON_MAP = {
@@ -1921,14 +1949,43 @@ const EFFECT_ICON_MAP = {
     '《10》': 'img/num_10.png',
 };
 
-function replaceEffectIcons(text) {
-    if (!text) return '';
-    let result = text;
-    Object.keys(EFFECT_ICON_MAP).forEach(marker => {
-        const img = `<img src="${EFFECT_ICON_MAP[marker]}" class="inline-effect-icon">`;
-        result = result.split(marker).join(img);
-    });
-    return result;
+const SAFE_EFFECT_ICON_SOURCES = new Set([
+    ...Object.values(EFFECT_ICON_MAP),
+    'img/轉倒.png',
+    'img/ex.png',
+    'img/break.png',
+    'img/lvlup.png'
+]);
+
+function appendSafeEffectContent(target, value) {
+    const text = String(value ?? '');
+    const tokenPattern = /<img\s+src=(?:"([^"]+)"|'([^']+)')\s+class=(?:"inline-effect-icon"|'inline-effect-icon')\s*\/?>|《(?:休|0|1|2|3|4|5|6|8|9|10)》/gi;
+    let cursor = 0;
+
+    for (const match of text.matchAll(tokenPattern)) {
+        const index = match.index;
+        if (index > cursor) {
+            target.appendChild(document.createTextNode(text.slice(cursor, index)));
+        }
+
+        const marker = match[0];
+        const src = match[1] || match[2] || EFFECT_ICON_MAP[marker];
+        if (src && SAFE_EFFECT_ICON_SOURCES.has(src)) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            img.setAttribute('aria-hidden', 'true');
+            img.className = 'inline-effect-icon';
+            target.appendChild(img);
+        } else {
+            target.appendChild(document.createTextNode(marker));
+        }
+        cursor = index + marker.length;
+    }
+
+    if (cursor < text.length) {
+        target.appendChild(document.createTextNode(text.slice(cursor)));
+    }
 }
 
 function cellText(v) {
@@ -1939,13 +1996,24 @@ function keywordBaseName(kw) {
     return kw.name.replace(/\s*[：▶].*$/, '').trim();
 }
 
-function resolveType(typeText, apText, dpText) {
-    const t = typeText.toLowerCase();
-    if (/イベント|事件|event/.test(t)) return 'event';
-    if (/サポート|裝備|装備|support/.test(t)) return 'support';
-    if (/無數字|无数字|nonum/.test(t)) return 'character_nonum';
-    if (/有數字|character_num/.test(t)) return 'character_num';
-    return (apText !== '' || dpText !== '') ? 'character_num' : 'character_nonum';
+function resolveType(typeText, apText, dpText, strict = false) {
+    const type = typeText.trim().toLocaleLowerCase();
+    const hasNumbers = apText !== '' || dpText !== '';
+    if (['キャラクター', '角色'].includes(type)) {
+        return hasNumbers ? 'character_num' : 'character_nonum';
+    }
+    if (['イベント', '事件'].includes(type)) return 'event';
+    if (['サポート', '裝備', '装備'].includes(type)) return 'support';
+
+    // Headerless legacy imports retain the older permissive type aliases.
+    if (!strict) {
+        if (/event/.test(type)) return 'event';
+        if (/support|裝備|装備/.test(type)) return 'support';
+        if (/無數字|无数字|nonum/.test(type)) return 'character_nonum';
+        if (/有數字|character_num/.test(type)) return 'character_num';
+        return hasNumbers ? 'character_num' : 'character_nonum';
+    }
+    return null;
 }
 
 function toNumber(text, label, rowNo, warnings) {
@@ -1960,7 +2028,7 @@ function toNumber(text, label, rowNo, warnings) {
 
 function parseKeywords(text, rowNo, warnings) {
     const result = [];
-    text.split(/[\n;；]+/).map(s => s.trim()).filter(Boolean).forEach(token => {
+    text.split(/[\n;；、]+/).map(s => s.trim()).filter(Boolean).forEach(token => {
         let name = token;
         let val = '';
 
@@ -2007,9 +2075,23 @@ function parseKeywords(text, rowNo, warnings) {
     return result;
 }
 
-function rowToCard(row, rowNo, order, warnings, errors) {
-    const [number, name, colorTxt, typeTxt, c, s, ap, dp, effect, kwTxt] =
-        Array.from({ length: 10 }, (_, i) => cellText(row[i]));
+const LEGACY_IMPORT_COLUMNS = {
+    number: 0, name: 1, color: 2, type: 3, c: 4, s: 5, ap: 6, dp: 7, effect: 8, keywords: 9
+};
+
+function rowToCard(row, rowNo, order, warnings, errors, columnMap = null) {
+    const columns = columnMap || LEGACY_IMPORT_COLUMNS;
+    const value = field => cellText(row[columns[field]]);
+    const number = value('number');
+    const name = value('name');
+    const colorTxt = value('color');
+    const typeTxt = value('type');
+    const c = value('c');
+    const s = value('s');
+    const ap = value('ap');
+    const dp = value('dp');
+    const effect = value('effect');
+    const kwTxt = value('keywords');
 
     const missing = [];
     if (colorTxt === '') missing.push('顏色');
@@ -2022,26 +2104,73 @@ function rowToCard(row, rowNo, order, warnings, errors) {
         return null;
     }
 
+    const type = resolveType(typeTxt, ap, dp, Boolean(columnMap));
+    if (!type) {
+        errors.push(`第 ${rowNo} 列：種類「${typeTxt}」不在支援清單中，已跳過`);
+        return null;
+    }
+
     let color = COLOR_MAP[colorTxt.toLowerCase()] || COLOR_MAP[colorTxt];
     if (!color) {
         warnings.push(`第 ${rowNo} 列：顏色「${colorTxt}」編輯器不支援，已先用紅色`);
         color = 'red';
     }
 
+    if (color === 'white' && (type === 'event' || type === 'support')) {
+        warnings.push(`第 ${rowNo} 列：白色事件／裝備卡目前沒有卡框，已暫用紅色卡框`);
+        color = 'red';
+    }
+
     return {
         order,
         number, name, color,
-        type: resolveType(typeTxt, ap, dp),
+        type,
         c: toNumber(c, 'C', rowNo, warnings),
         s: toNumber(s, 'S', rowNo, warnings),
         ap: toNumber(ap, 'AP', rowNo, warnings),
         dp: toNumber(dp, 'DP', rowNo, warnings),
-        effect: replaceEffectIcons(effect),
+        effect,
         keywords: parseKeywords(kwTxt, rowNo, warnings),
         custom: { name: '', val: '', checked: false },
         image: null,
         imgState: null
     };
+}
+
+const IMPORT_HEADER_ALIASES = {
+    number: ['卡號', '欄位卡號', 'カード番号', 'カードno', 'number'],
+    name: ['卡名', 'カードネーム', 'cardname', 'name'],
+    color: ['顏色', '颜色', '色', 'color'],
+    type: ['種類', 'カードタイプ', '卡片種類', 'type'],
+    c: ['使用コスト', '使用成本', 'c'],
+    s: ['発生コスト', '發生成本', '发生成本', 's'],
+    ap: ['ap'],
+    dp: ['dp'],
+    effect: ['效果文', '效果', 'テキスト', 'effect'],
+    keywords: ['關鍵字', '关键词', 'キーワードテキスト', 'キーワード', 'keywords']
+};
+
+function normalizeImportHeader(value) {
+    return String(value ?? '').normalize('NFKC').toLocaleLowerCase().replace(/欄位/g, '').replace(/[\s\u3000]/g, '');
+}
+
+function findImportHeader(rows) {
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const labels = rows[rowIndex].map(normalizeImportHeader);
+        const columns = {};
+        Object.entries(IMPORT_HEADER_ALIASES).forEach(([field, aliases]) => {
+            const index = labels.findIndex(label => aliases.some(alias => {
+                const normalizedAlias = normalizeImportHeader(alias);
+                return label === normalizedAlias || (normalizedAlias.length > 1 && label.includes(normalizedAlias));
+            }));
+            if (index >= 0) columns[field] = index;
+        });
+        const requiredFound = ['color', 'type', 'c', 's'].filter(field => columns[field] !== undefined).length;
+        if (columns.number !== undefined || (columns.color !== undefined && columns.type !== undefined) || requiredFound >= 3) {
+            return { rowIndex, columns };
+        }
+    }
+    return null;
 }
 
 async function handleExcelImport(file) {
@@ -2051,20 +2180,34 @@ async function handleExcelImport(file) {
         const warnings = [];
         const errors = [];
 
-        let headerIdx = rows.findIndex(r => cellText(r[0]).includes('卡號'));
-        if (headerIdx < 0) {
+        const header = findImportHeader(rows);
+        let headerIdx;
+        let columnMap = null;
+        if (header) {
+            const requiredHeaders = ['color', 'type', 'c', 's'];
+            const missingHeaders = requiredHeaders.filter(field => header.columns[field] === undefined);
+            if (missingHeaders.length > 0) {
+                const labelByField = { color: '顏色', type: '種類', c: 'C', s: 'S' };
+                alert(`標題列缺少必要欄名：${missingHeaders.map(field => labelByField[field]).join('、')}。請確認顏色、種類、C、S 欄標題。`);
+                return;
+            }
+            headerIdx = header.rowIndex;
+            columnMap = header.columns;
+        } else {
             headerIdx = 1;
-            warnings.push('找不到標題列（A 欄含「卡號」），已預設從第 3 列開始讀取');
+            warnings.push('找不到可辨識的欄名標題列，已預設從第 3 列開始讀取舊格式');
         }
 
         const cards = [];
         for (let i = headerIdx + 1; i < rows.length; i++) {
             const r = rows[i];
             const isEmpty = r.every(v => cellText(v) === '');
-            const isExample = cellText(r[0]).startsWith('範例') || cellText(r[1]).startsWith('*');
+            const numberColumn = columnMap ? columnMap.number : 0;
+            const nameColumn = columnMap ? columnMap.name : 1;
+            const isExample = cellText(r[numberColumn]).startsWith('範例') || cellText(r[nameColumn]).startsWith('*');
             if (isEmpty || isExample) continue;
 
-            const card = rowToCard(r, i + 1, cards.length, warnings, errors);
+            const card = rowToCard(r, i + 1, cards.length, warnings, errors, columnMap);
             if (card) cards.push(card);
         }
 
